@@ -1,7 +1,7 @@
 export interface Movie {
   title: string;
   year: string;
-  genre: string;
+  genre?: string;
   rating: number;
   imageUrl: string;
   imageHint: string;

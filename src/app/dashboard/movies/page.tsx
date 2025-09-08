@@ -42,7 +42,10 @@ export default function MoviesPage() {
     setLoading(true);
     try {
       const result = await searchMovies({ query });
-      setMovies(result.movies);
+      setMovies(result.movies.map((m) => ({
+        ...m,
+        genre: m.genre ?? "Unknown", // fallback to string
+      })));
     } catch (error) {
       console.error('Failed to search for movies:', error);
       toast({
