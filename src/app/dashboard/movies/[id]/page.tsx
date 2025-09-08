@@ -8,7 +8,7 @@ import { Star } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
-import { getMovieDetails } from '@/ai/flows/get-movie-details';
+import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { useState, useEffect, useRef } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -53,17 +53,6 @@ const StarRatingInput = ({
 };
 
 
-// Define the type for the movie details to avoid using 'any'
-interface MovieDetails {
-  title: string;
-  synopsis: string;
-  genre: string;
-  year: string;
-  rating: number;
-  imageUrl: string;
-  imageHint: string;
-}
-
 export default function MovieDetailPage({
   params,
 }: {
@@ -72,7 +61,7 @@ export default function MovieDetailPage({
   const movieId = parseInt(params.id, 10);
   const [user, authLoading] = useAuthState(auth);
 
-  const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
+  const [movieDetails, setMovieDetails] = useState<MovieDetailsOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
@@ -89,11 +78,7 @@ export default function MovieDetailPage({
       initialLoadRef.current = true;
       try {
         const details = await getMovieDetails({ id: movieId });
-        if (!details) {
-          setMovieDetails(null);
-          return;
-        }
-        setMovieDetails(details);
+        setMovieDetails(details); // Always set details, even if it's the fallback
         
         if (user) {
           const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
@@ -113,7 +98,7 @@ export default function MovieDetailPage({
         }
       } catch (error) {
         console.error("Failed to fetch movie data", error);
-        setMovieDetails(null);
+        setMovieDetails(null); // Set to null only on catastrophic error
       } finally {
         setLoading(false);
         // Use a timeout to ensure this runs after the initial state updates have settled
