@@ -3,7 +3,7 @@ import {z} from 'zod';
 export const MovieSchema = z.object({
   title: z.string(),
   year: z.string(),
-  genre: z.string(),
+  genre: z.string().optional(), // Genre might not be available on all search results
   rating: z.number(),
   imageUrl: z
     .string()
