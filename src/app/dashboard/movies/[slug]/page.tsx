@@ -1,3 +1,5 @@
+"use client";
+
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +8,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
+import { useState, useEffect } from 'react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -20,14 +26,51 @@ const StarRating = ({ rating }: { rating: number }) => (
   </div>
 );
 
-export default async function MovieDetailPage({
+// Define the type for the movie details to avoid using 'any'
+interface MovieDetails {
+  synopsis: string;
+  genre: string;
+  year: string;
+  rating: number;
+  imageUrl: string;
+  imageHint: string;
+}
+
+export default function MovieDetailPage({
   params,
 }: {
   params: { slug: string };
 }) {
   const movieTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
+  const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [watched, setWatched] = useState(false);
+  const [userRating, setUserRating] = useState(0);
 
-  const movieDetails = await getMovieDetails({ title: movieTitle });
+  useEffect(() => {
+    async function fetchDetails() {
+      try {
+        const details = await getMovieDetails({ title: movieTitle });
+        if (details) {
+          setMovieDetails(details);
+          setUserRating(details.rating);
+        } else {
+          setMovieDetails(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch movie details", error);
+        setMovieDetails(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDetails();
+  }, [movieTitle]);
+
+  if (loading) {
+    // Optional: Add a loading state
+    return <div>Loading...</div>;
+  }
 
   if (!movieDetails) {
     notFound();
@@ -64,8 +107,33 @@ export default async function MovieDetailPage({
           <div className="flex items-center gap-4">
             <StarRating rating={movieDetails.rating} />
             <span className="text-lg font-bold">
-              {movieDetails.rating.toFixed(1)} / 5.0
+              {movieDetails.rating.toFixed(1)} / 5.0 (TMDB)
             </span>
+          </div>
+
+          <div className="pt-4 space-y-6">
+            <div className="flex items-center space-x-2">
+              <Switch id="watched-toggle" checked={watched} onCheckedChange={setWatched} />
+              <Label htmlFor="watched-toggle" className="text-lg">
+                Mark as Watched
+              </Label>
+            </div>
+
+            <div>
+              <Label htmlFor="rating-slider" className="text-lg">Your Rating: {userRating.toFixed(1)}</Label>
+              <div className="flex items-center gap-4 mt-2">
+                <Slider
+                  id="rating-slider"
+                  min={0}
+                  max={5}
+                  step={0.5}
+                  value={[userRating]}
+                  onValueChange={(value) => setUserRating(value[0])}
+                  className="w-[200px]"
+                />
+                <Button>Save Rating</Button>
+              </div>
+            </div>
           </div>
 
           <div className="pt-4">
