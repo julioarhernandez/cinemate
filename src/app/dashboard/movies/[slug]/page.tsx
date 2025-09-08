@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -82,55 +83,45 @@ export default function MovieDetailPage({
   useEffect(() => {
     if (!movieTitle) return;
 
-    async function fetchDetails() {
+    async function fetchDetailsAndUserRating() {
       setLoading(true);
       try {
+        // 1. Fetch movie details
         const details = await getMovieDetails({ title: movieTitle });
-        if (details) {
-          setMovieDetails(details);
-          // Set initial rating from TMDB, will be overwritten by user's if it exists
-          setUserRating(details.rating);
-        } else {
+        if (!details) {
           setMovieDetails(null);
+          return;
+        }
+        setMovieDetails(details);
+        setUserRating(details.rating); // Set initial rating from TMDB
+
+        // 2. Fetch user rating from Firestore once user is available
+        if (user) {
+          const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
+          const ratingDoc = await getDoc(ratingDocRef);
+          
+          if (ratingDoc.exists()) {
+            const data = ratingDoc.data();
+            // Overwrite with user's saved data if it exists
+            setUserRating(data.rating || details.rating);
+            setWatched(data.watched || false);
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch movie details", error);
+        console.error("Failed to fetch movie data", error);
         setMovieDetails(null);
       } finally {
         setLoading(false);
       }
     }
-    fetchDetails();
-  }, [movieTitle]);
 
-  useEffect(() => {
-    // This effect runs when user or movieDetails state changes.
-    // It's responsible for fetching the user's specific rating data from Firestore.
-    if (!user || !movieTitle || !movieDetails) return;
-
-    async function fetchUserRating() {
-      try {
-        const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
-        const ratingDoc = await getDoc(ratingDocRef);
-        
-        if (ratingDoc.exists()) {
-          const data = ratingDoc.data();
-          // If a user rating exists, it overwrites the default TMDB one
-          setUserRating(data.rating || movieDetails.rating);
-          setWatched(data.watched || false);
-        } else {
-           // If no rating in DB, use TMDB's as a default starting point
-           setUserRating(movieDetails.rating);
-           setWatched(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user rating", error);
-      }
+    // Only run this when the user is loaded (or not logged in)
+    if (!authLoading) {
+      fetchDetailsAndUserRating();
     }
 
-    fetchUserRating();
-  }, [user, movieTitle, movieDetails]); // Re-run when user, title, or movieDetails are available
-
+  }, [movieTitle, user, authLoading]); // Re-run when user or auth state changes
+  
   const handleSave = async (ratingToSave: number, watchedToSave: boolean) => {
     if (!user) {
       toast({
@@ -169,12 +160,17 @@ export default function MovieDetailPage({
 
   useEffect(() => {
     // This effect handles auto-saving the 'watched' status.
+    // It should only run AFTER the initial data load.
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-
+    
+    // Prevent saving if the user is not loaded yet
     if (!user || authLoading) return;
+
+    // Prevent saving if movieDetails haven't loaded yet
+    if (!movieDetails) return;
 
     async function autoSaveWatched() {
       const success = await handleSave(userRating, watched);
@@ -186,7 +182,7 @@ export default function MovieDetailPage({
       }
     }
     autoSaveWatched();
-  }, [watched, user, authLoading]);
+  }, [watched]);
 
 
   if (loading || authLoading) {
@@ -246,7 +242,7 @@ export default function MovieDetailPage({
                 <StarRatingInput rating={userRating} setRating={setUserRating} />
                 <Button onClick={handleSaveRating}>Save Rating</Button>
               </div>
-               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating} out of 10 stars.` : 'Rate this movie.'}</p>
+               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(1)} out of 10 stars.` : 'Rate this movie.'}</p>
             </div>
           </div>
 
