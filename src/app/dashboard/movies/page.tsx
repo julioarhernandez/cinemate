@@ -108,9 +108,17 @@ export default function MoviesPage() {
       const result = await searchMovies({ query });
       
       const moviesWithGenre = await Promise.all(result.movies.map(async movie => {
-        // Since search doesn't return genre, we might need a separate call
-        // or a smarter search flow. For now, let's see what we get.
         // The genre will be fetched on the details page.
+        // For now, try to get it from our hardcoded list if the TMDB search result doesn't have it
+        const movieDetailsDocRef = doc(db, 'movieDetails', movie.title);
+        try {
+          const docSnap = await getDoc(movieDetailsDocRef);
+          if (docSnap.exists()) {
+            return { ...movie, genre: docSnap.data().genre ?? 'Unknown' };
+          }
+        } catch (e) {
+          // This will fail if rules don't allow it, which is fine. We'll ignore it.
+        }
         return { ...movie, genre: movie.genre ?? 'Unknown' };
       }));
       setMovies(moviesWithGenre);
@@ -258,6 +266,9 @@ export default function MoviesPage() {
                         </PopoverContent>
                     </Popover>
                 </div>
+                 <Button onClick={() => setIsFiltersOpen(false)} className="w-full">
+                    Apply Filters
+                 </Button>
             </div>
           </CollapsibleContent>
         </Collapsible>
