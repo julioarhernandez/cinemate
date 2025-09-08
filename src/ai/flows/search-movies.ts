@@ -15,6 +15,7 @@ import {
   type SearchMoviesInput,
   type SearchMoviesOutput,
 } from '@/ai/schemas/movie-schemas';
+import { movies as allMovies } from '@/lib/movies';
 
 export type {SearchMoviesInput, SearchMoviesOutput};
 
@@ -23,13 +24,6 @@ export async function searchMovies(
 ): Promise<SearchMoviesOutput> {
   return searchMoviesFlow(input);
 }
-
-const prompt = ai.definePrompt({
-  name: 'searchMoviesPrompt',
-  input: {schema: SearchMoviesInputSchema},
-  output: {schema: SearchMoviesOutputSchema},
-  prompt: `You are a movie database API. Find movies that match the following query: {{{query}}}. Return a list of movies. If you don't find any, you can make some up. Return at least 9 results.`,
-});
 
 const searchMoviesFlow = ai.defineFlow(
   {
@@ -40,11 +34,11 @@ const searchMoviesFlow = ai.defineFlow(
   async input => {
     // If the query is empty, return the default list of movies.
     if (!input.query) {
-      const { movies } = await import('@/lib/movies');
-      return { movies };
+      return { movies: allMovies };
     }
 
-    const {output} = await prompt(input);
-    return output!;
+    const filteredMovies = allMovies.filter(movie => movie.title.toLowerCase().includes(input.query.toLowerCase()));
+
+    return { movies: filteredMovies };
   }
 );
