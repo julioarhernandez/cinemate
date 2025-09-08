@@ -44,7 +44,7 @@ interface MovieDetails {
 export default function MovieDetailPage({
   params,
 }: {
-  params: Promise<{ slug:string }>;
+  params: Promise<{ slug: string }>;
 }) {
   const resolvedParams = use(params);
   const movieTitle = decodeURIComponent(resolvedParams.slug.replace(/-/g, ' '));
