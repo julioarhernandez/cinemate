@@ -116,7 +116,7 @@ export default function MovieDetailPage({
 
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
-      await setDoc(ratingDocRef, { rating: userRating, watched }, { merge: true });
+      await setDoc(ratingDocRef, { rating: userRating, watched: watched }, { merge: true });
 
       toast({
         title: 'Rating Saved!',
