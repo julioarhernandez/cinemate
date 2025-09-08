@@ -76,8 +76,8 @@ export default function MovieDetailPage({
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
+  const [isDataLoaded, setIsDataLoaded] = useState(false); // Flag to prevent initial save
   const { toast } = useToast();
-  const isInitialMount = useRef(true);
 
 
   useEffect(() => {
@@ -113,6 +113,7 @@ export default function MovieDetailPage({
         setMovieDetails(null);
       } finally {
         setLoading(false);
+        setIsDataLoaded(true); // Mark initial data load as complete
       }
     }
 
@@ -160,9 +161,8 @@ export default function MovieDetailPage({
 
   useEffect(() => {
     // This effect handles auto-saving the 'watched' status.
-    // It should only run AFTER the initial data load.
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    // It should only run AFTER the initial data load is complete.
+    if (!isDataLoaded) {
       return;
     }
     
@@ -183,7 +183,7 @@ export default function MovieDetailPage({
     }
     autoSaveWatched();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watched]);
+  }, [watched, isDataLoaded]);
 
 
   if (loading || authLoading) {
