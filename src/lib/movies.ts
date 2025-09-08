@@ -1,4 +1,13 @@
-export const movies = [
+export interface Movie {
+  title: string;
+  year: string;
+  genre: string;
+  rating: number;
+  imageUrl: string;
+  imageHint: string;
+}
+
+export const movies: Movie[] = [
     {
       title: 'Cosmic Echo',
       year: '2024',

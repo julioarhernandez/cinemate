@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -11,9 +11,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star } from 'lucide-react';
+import { Search, Star, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { movies } from '@/lib/movies';
+import { movies as defaultMovies, type Movie } from '@/lib/movies';
+import { searchMovies } from '@/ai/flows/search-movies';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -30,10 +32,30 @@ const StarRating = ({ rating }: { rating: number }) => (
 
 export default function MoviesPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [movies, setMovies] = useState<Movie[]>(defaultMovies);
+  const [loading, setLoading] = useState(false);
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  const filteredMovies = movies.filter((movie) =>
-    movie.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSearch = useCallback(async (query: string) => {
+    if (!query) {
+      setMovies(defaultMovies);
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await searchMovies({ query });
+      setMovies(result.movies);
+    } catch (error) {
+      console.error('Failed to search for movies:', error);
+      // Optionally, show a toast notification to the user
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    handleSearch(debouncedSearchTerm);
+  }, [debouncedSearchTerm, handleSearch]);
 
   return (
     <div className="space-y-8">
@@ -54,10 +76,11 @@ export default function MoviesPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {filteredMovies.map((movie) => (
+        {movies.map((movie) => (
           <Link href={`/dashboard/movies/${encodeURIComponent(movie.title.toLowerCase().replace(/ /g, '-'))}`} key={movie.title}>
             <Card className="group overflow-hidden h-full">
               <CardHeader className="p-0">
