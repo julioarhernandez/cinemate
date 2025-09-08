@@ -33,16 +33,12 @@ const StarRating = ({ rating }: { rating: number }) => (
 
 export default function MoviesPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [movies, setMovies] = useState<Movie[]>(defaultMovies);
-  const [loading, setLoading] = useState(false);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const { toast } = useToast();
 
   const handleSearch = useCallback(async (query: string) => {
-    if (!query) {
-      setMovies(defaultMovies);
-      return;
-    }
     setLoading(true);
     try {
       const result = await searchMovies({ query });
@@ -55,6 +51,7 @@ export default function MoviesPage() {
         description:
           'Could not fetch movie results. The service might be temporarily unavailable. Please try again in a moment.',
       });
+      setMovies(defaultMovies);
     } finally {
       setLoading(false);
     }
