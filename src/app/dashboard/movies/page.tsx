@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from 'react';
 import Image from 'next/image';
 import {
   Card,
@@ -75,6 +78,14 @@ const movies = [
     imageUrl: 'https://picsum.photos/400/600?random=8',
     imageHint: 'adventure movie poster',
   },
+  {
+    title: 'Memento',
+    year: '2000',
+    genre: 'Thriller',
+    rating: 5,
+    imageUrl: 'https://picsum.photos/400/600?random=9',
+    imageHint: 'thriller movie poster dark',
+  }
 ];
 
 const StarRating = ({ rating }: { rating: number }) => (
@@ -91,6 +102,12 @@ const StarRating = ({ rating }: { rating: number }) => (
 );
 
 export default function MoviesPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredMovies = movies.filter((movie) =>
+    movie.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-8">
       <div>
@@ -104,11 +121,16 @@ export default function MoviesPage() {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search movies..." className="pl-10" />
+        <Input
+          placeholder="Search movies..."
+          className="pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {movies.map((movie) => (
+        {filteredMovies.map((movie) => (
           <Card key={movie.title} className="group overflow-hidden">
             <CardHeader className="p-0">
               <div className="relative h-60">
