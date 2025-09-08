@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -11,12 +12,31 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2 } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { movies as defaultMovies, type Movie } from '@/lib/movies';
+import { type Movie } from '@/lib/movies';
 import { searchMovies } from '@/ai/flows/search-movies';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
+import { auth, db } from '@/lib/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { genres as allGenres } from '@/lib/movies';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+
+
+interface UserMovieData {
+  watched?: boolean;
+  rating?: number;
+}
+
+type UserRatings = Record<string, UserMovieData>;
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -32,29 +52,83 @@ const StarRating = ({ rating }: { rating: number }) => (
 );
 
 export default function MoviesPage() {
+  const [user, authLoading] = useAuthState(auth);
   const [searchTerm, setSearchTerm] = useState('');
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRatings, setUserRatings] = useState<UserRatings>({});
+
+  // Filter states
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [watchedFilter, setWatchedFilter] = useState<'all' | 'watched' | 'not-watched'>('all');
+  const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
+  const [yearRange, setYearRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const { toast } = useToast();
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (watchedFilter !== 'all') count++;
+    if (ratingRange[0] !== 0 || ratingRange[1] !== 10) count++;
+    if (yearRange.start || yearRange.end) count++;
+    if (selectedGenres.length > 0) count++;
+    return count;
+  }, [watchedFilter, ratingRange, yearRange, selectedGenres]);
+
+  const resetFilters = () => {
+    setWatchedFilter('all');
+    setRatingRange([0, 10]);
+    setYearRange({ start: '', end: '' });
+    setSelectedGenres([]);
+  }
+
+  useEffect(() => {
+    async function fetchUserRatings() {
+      if (user) {
+        const ratingsCollection = collection(db, 'users', user.uid, 'ratings');
+        const snapshot = await getDocs(ratingsCollection);
+        const ratings: UserRatings = {};
+        snapshot.forEach((doc) => {
+          ratings[doc.id] = doc.data() as UserMovieData;
+        });
+        setUserRatings(ratings);
+      }
+    }
+    if (!authLoading) {
+      fetchUserRatings();
+    }
+  }, [user, authLoading]);
+  
 
   const handleSearch = useCallback(async (query: string) => {
     setLoading(true);
     try {
       const result = await searchMovies({ query });
-      setMovies(result.movies.map((m) => ({
-        ...m,
-        genre: m.genre ?? "Unknown", // fallback to string
-      })));
+      
+      const moviesWithGenre = await Promise.all(result.movies.map(async movie => {
+        // Since search doesn't return genre, we might need a separate call
+        // or a smarter search flow. For now, let's see what we get.
+        if (!movie.genre) {
+             const detailsDocRef = doc(db, "movieDetails", movie.title);
+             const docSnap = await getDoc(detailsDocRef);
+             if (docSnap.exists() && docSnap.data().genre) {
+               return { ...movie, genre: docSnap.data().genre };
+             }
+        }
+        return { ...movie, genre: movie.genre ?? 'Unknown' };
+      }));
+      setMovies(moviesWithGenre);
+      
     } catch (error) {
       console.error('Failed to search for movies:', error);
       toast({
         variant: 'destructive',
         title: 'Search Failed',
-        description:
-          'Could not fetch movie results. The service might be temporarily unavailable. Please try again in a moment.',
+        description: 'Could not fetch movie results. Please try again.',
       });
-      setMovies(defaultMovies);
+      setMovies([]);
     } finally {
       setLoading(false);
     }
@@ -63,6 +137,45 @@ export default function MoviesPage() {
   useEffect(() => {
     handleSearch(debouncedSearchTerm);
   }, [debouncedSearchTerm, handleSearch]);
+
+
+  const filteredMovies = useMemo(() => {
+    return movies
+      .map(movie => {
+        const userMovieInfo = userRatings[movie.title];
+        return { ...movie, userRating: userMovieInfo?.rating, watched: userMovieInfo?.watched };
+      })
+      .filter(movie => {
+        // Watched status filter
+        if (watchedFilter === 'watched' && !movie.watched) return false;
+        if (watchedFilter === 'not-watched' && movie.watched) return false;
+
+        // Rating range filter (on user rating)
+        const movieUserRating = movie.userRating ?? -1; // Use -1 for unrated
+        if (movieUserRating !== -1 && (movieUserRating < ratingRange[0] || movieUserRating > ratingRange[1])) {
+          return false;
+        }
+        // If a movie is unrated, it should not be filtered out by the rating slider unless the user specifically wants to see rated movies. Let's assume they want to see everything that doesn't fall outside their range.
+
+        // Year range filter
+        const movieYear = parseInt(movie.year);
+        const startYear = yearRange.start ? parseInt(yearRange.start) : -Infinity;
+        const endYear = yearRange.end ? parseInt(yearRange.end) : Infinity;
+        if (!isNaN(movieYear) && (movieYear < startYear || movieYear > endYear)) {
+          return false;
+        }
+
+        // Genre filter
+        if (selectedGenres.length > 0) {
+            const movieGenres = movie.genre?.split(', ').map(g => g.trim()) || [];
+            if (!selectedGenres.some(sg => movieGenres.includes(sg))) {
+                return false;
+            }
+        }
+
+        return true;
+      });
+  }, [movies, userRatings, watchedFilter, ratingRange, yearRange, selectedGenres]);
 
   return (
     <div className="space-y-8">
@@ -75,19 +188,90 @@ export default function MoviesPage() {
         </p>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search movies..."
-          className="pl-10"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+      <div className="space-y-4">
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search movies..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+        </div>
+        
+        <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+            <div className="flex items-center justify-between">
+                <CollapsibleTrigger asChild>
+                    <Button variant="outline" size="sm">
+                        <ListFilter className="mr-2 h-4 w-4" />
+                        Filters
+                        {activeFilterCount > 0 && <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{activeFilterCount}</span>}
+                    </Button>
+                </CollapsibleTrigger>
+                {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset</Button>}
+            </div>
+          <CollapsibleContent className="mt-4 animate-in fade-in-0 zoom-in-95">
+            <div className="rounded-lg border p-4 space-y-6">
+                {/* Watched Filter */}
+                <div className="space-y-2">
+                    <Label>Watched Status</Label>
+                    <div className="flex gap-2">
+                        <Button variant={watchedFilter === 'all' ? 'secondary' : 'outline'} onClick={() => setWatchedFilter('all')}>All</Button>
+                        <Button variant={watchedFilter === 'watched' ? 'secondary' : 'outline'} onClick={() => setWatchedFilter('watched')}>Watched</Button>
+                        <Button variant={watchedFilter === 'not-watched' ? 'secondary' : 'outline'} onClick={() => setWatchedFilter('not-watched')}>Not Watched</Button>
+                    </div>
+                </div>
+
+                {/* Rating Filter */}
+                <div className="space-y-2">
+                    <Label>Your Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
+                    <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} max={10} step={1} />
+                </div>
+
+                {/* Year Filter */}
+                <div className="space-y-2">
+                    <Label>Release Year</Label>
+                    <div className="flex items-center gap-4">
+                        <Input placeholder="From (e.g., 1990)" value={yearRange.start} onChange={e => setYearRange(p => ({...p, start: e.target.value}))} />
+                        <span>-</span>
+                        <Input placeholder="To (e.g., 2024)" value={yearRange.end} onChange={e => setYearRange(p => ({...p, end: e.target.value}))} />
+                    </div>
+                </div>
+
+                {/* Genre Filter */}
+                <div className="space-y-2">
+                    <Label>Genre</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                             <Button variant="outline" className="w-full justify-start font-normal">
+                                {selectedGenres.length > 0 ? `${selectedGenres.length} selected` : "Select genres"}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                           <div className="p-4 grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                            {allGenres.map(genre => (
+                                <div key={genre} className="flex items-center space-x-2">
+                                    <Checkbox id={`genre-${genre}`} checked={selectedGenres.includes(genre)} onCheckedChange={(checked) => {
+                                        return checked
+                                            ? setSelectedGenres([...selectedGenres, genre])
+                                            : setSelectedGenres(selectedGenres.filter(g => g !== genre));
+                                    }} />
+                                    <Label htmlFor={`genre-${genre}`} className="font-normal">{genre}</Label>
+                                </div>
+                            ))}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-        {movies.map((movie) => (
+        {filteredMovies.map((movie) => (
           <Link href={`/dashboard/movies/${encodeURIComponent(movie.title.toLowerCase().replace(/ /g, '-'))}`} key={movie.title}>
             <Card className="group overflow-hidden h-full">
               <CardHeader className="p-0">
@@ -102,6 +286,7 @@ export default function MoviesPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   <Badge variant="secondary" className="absolute bottom-2 left-2">{movie.genre}</Badge>
+                   {movie.watched && <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>}
                 </div>
               </CardHeader>
               <CardContent className="p-3">
@@ -109,7 +294,13 @@ export default function MoviesPage() {
                 <p className="text-sm text-muted-foreground">{movie.year}</p>
               </CardContent>
               <CardFooter className="p-3 pt-0">
-                <StarRating rating={movie.rating} />
+                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Star className="h-4 w-4 text-amber-400" /> 
+                    <span>{movie.rating.toFixed(1)}</span>
+                    {movie.userRating && (
+                         <span className="flex items-center gap-1 text-primary font-bold">( <Star className="h-4 w-4"/> {movie.userRating} )</span>
+                    )}
+                 </div>
               </CardFooter>
             </Card>
           </Link>
