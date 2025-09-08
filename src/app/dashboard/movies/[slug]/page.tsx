@@ -78,6 +78,7 @@ export default function MovieDetailPage({
   const [userRating, setUserRating] = useState(0);
   const [isDataLoaded, setIsDataLoaded] = useState(false); // Flag to prevent initial save
   const { toast } = useToast();
+  const initialLoadRef = useRef(true);
 
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function MovieDetailPage({
 
     async function fetchDetailsAndUserRating() {
       setLoading(true);
+      initialLoadRef.current = true; // Reset for each movie change
       try {
         // 1. Fetch movie details first
         const details = await getMovieDetails({ title: movieTitle });
@@ -114,6 +116,10 @@ export default function MovieDetailPage({
       } finally {
         setLoading(false);
         setIsDataLoaded(true); // Mark initial data load as complete
+        // Use timeout to prevent save on initial state setting
+        setTimeout(() => {
+          initialLoadRef.current = false;
+        }, 100);
       }
     }
 
@@ -160,30 +166,28 @@ export default function MovieDetailPage({
   };
 
   useEffect(() => {
-    // This effect handles auto-saving the 'watched' status.
-    // It should only run AFTER the initial data load is complete.
-    if (!isDataLoaded) {
+    if (initialLoadRef.current || !isDataLoaded || !movieDetails) {
+        return;
+    }
+
+    async function autoSaveWatched() {
+        const success = await handleSave({ watched: watched });
+        if (success) {
+            toast({
+            title: 'Watched Status Updated!',
+            description: watched ? `Marked "${movieTitle}" as watched.` : `Marked "${movieTitle}" as unwatched.`,
+            });
+        }
+    }
+
+    if (!user) {
+      // Don't save if not logged in, but we still need to update UI, which is handled by setWatched
       return;
     }
     
-    // Prevent saving if the user is not loaded yet
-    if (!user || authLoading) return;
-
-    // Prevent saving if movieDetails haven't loaded yet
-    if (!movieDetails) return;
-
-    async function autoSaveWatched() {
-      const success = await handleSave({ watched: watched });
-      if (success) {
-         toast({
-          title: 'Watched Status Updated!',
-          description: watched ? `Marked "${movieTitle}" as watched.` : `Marked "${movieTitle}" as unwatched.`,
-        });
-      }
-    }
     autoSaveWatched();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watched, isDataLoaded]);
+  }, [watched]);
 
 
   if (loading || authLoading) {
