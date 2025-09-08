@@ -41,13 +41,21 @@ export default function MovieDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const movieTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
+  const [movieTitle, setMovieTitle] = useState('');
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
+  
+  useEffect(() => {
+    if (params.slug) {
+      const decodedTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
+      setMovieTitle(decodedTitle);
+    }
+  }, [params.slug]);
 
   useEffect(() => {
+    if (!movieTitle) return;
     async function fetchDetails() {
       try {
         const details = await getMovieDetails({ title: movieTitle });
