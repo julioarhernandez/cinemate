@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 export const MovieSchema = z.object({
+  id: z.number().describe('The unique ID of the movie.'),
   title: z.string(),
   year: z.string(),
   genre: z.string().optional(), // Genre might not be available on all search results

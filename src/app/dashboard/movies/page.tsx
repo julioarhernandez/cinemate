@@ -20,7 +20,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -37,19 +37,6 @@ interface UserMovieData {
 }
 
 type UserRatings = Record<string, UserMovieData>;
-
-const StarRating = ({ rating }: { rating: number }) => (
-  <div className="flex items-center gap-1">
-    {[...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`h-4 w-4 text-amber-400 ${
-          i < Math.round(rating / 2) ? 'fill-current' : ''
-        }`}
-      />
-    ))}
-  </div>
-);
 
 export default function MoviesPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -134,7 +121,7 @@ export default function MoviesPage() {
 
   const filteredMovies = useMemo(() => {
     const moviesWithUserData = movies.map(movie => {
-        const userData = userRatings[movie.title];
+        const userData = userRatings[movie.id.toString()];
         return {
             ...movie,
             watched: userData?.watched === true,
@@ -145,10 +132,10 @@ export default function MoviesPage() {
     return moviesWithUserData.filter(movie => {
         // Watched status filter
         if (watchedFilter === 'watched') {
-            if (!movie.watched) return false;
+          if (!movie.watched) return false;
         }
         if (watchedFilter === 'not-watched') {
-            if (movie.watched) return false;
+          if (movie.watched) return false;
         }
 
         // Rating range filter (on user rating)
@@ -275,7 +262,7 @@ export default function MoviesPage() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {filteredMovies.map((movie) => (
-          <Link href={`/dashboard/movies/${encodeURIComponent(movie.title.toLowerCase().replace(/ /g, '-'))}`} key={movie.title}>
+          <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
             <Card className="group overflow-hidden h-full">
               <CardHeader className="p-0">
                 <div className="relative h-60">

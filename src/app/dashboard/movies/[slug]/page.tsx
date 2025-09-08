@@ -55,6 +55,7 @@ const StarRatingInput = ({
 
 // Define the type for the movie details to avoid using 'any'
 interface MovieDetails {
+  title: string;
   synopsis: string;
   genre: string;
   year: string;
@@ -66,48 +67,46 @@ interface MovieDetails {
 export default function MovieDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
-  const movieTitle = decodeURIComponent(resolvedParams.slug.replace(/-/g, ' '));
+  const movieId = parseInt(resolvedParams.id, 10);
   const [user, authLoading] = useAuthState(auth);
 
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
-  const [isDataLoaded, setIsDataLoaded] = useState(false); // Flag to prevent initial save
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const { toast } = useToast();
   const initialLoadRef = useRef(true);
 
 
   useEffect(() => {
-    if (!movieTitle) return;
+    if (isNaN(movieId)) return;
 
     async function fetchDetailsAndUserRating() {
       setLoading(true);
-      initialLoadRef.current = true; // Reset for each movie change
+      initialLoadRef.current = true;
       try {
-        // 1. Fetch movie details first
-        const details = await getMovieDetails({ title: movieTitle });
+        const details = await getMovieDetails({ id: movieId });
         if (!details) {
           setMovieDetails(null);
           return;
         }
         setMovieDetails(details);
-        // Set initial rating from TMDB as a fallback. It will be overwritten by user data if it exists.
         setUserRating(Math.round(details.rating));
 
-        // 2. Then, fetch user-specific data from Firestore if the user is logged in
         if (user) {
-          const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
+          const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
           const ratingDoc = await getDoc(ratingDocRef);
           
           if (ratingDoc.exists()) {
             const data = ratingDoc.data();
-            // Overwrite with user's saved data if it exists
             setUserRating(data.rating || Math.round(details.rating));
             setWatched(data.watched === true);
+          } else {
+             setWatched(false);
           }
         }
       } catch (error) {
@@ -115,20 +114,18 @@ export default function MovieDetailPage({
         setMovieDetails(null);
       } finally {
         setLoading(false);
-        setIsDataLoaded(true); // Mark initial data load as complete
-        // Use timeout to prevent save on initial state setting
+        setIsDataLoaded(true);
         setTimeout(() => {
           initialLoadRef.current = false;
         }, 100);
       }
     }
 
-    // Only run this when the auth state is resolved (user is loaded or not logged in)
     if (!authLoading) {
       fetchDetailsAndUserRating();
     }
 
-  }, [movieTitle, user, authLoading]); // Re-run when user or auth state changes
+  }, [movieId, user, authLoading]);
   
   const handleSave = async (dataToSave: { rating?: number; watched?: boolean }) => {
     if (!user) {
@@ -141,7 +138,7 @@ export default function MovieDetailPage({
     }
   
     try {
-      const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
+      const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
       await setDoc(ratingDocRef, dataToSave, { merge: true });
       return true;
     } catch (error) {
@@ -156,11 +153,12 @@ export default function MovieDetailPage({
   };
   
   const handleSaveRating = async () => {
+    if (!movieDetails) return;
     const success = await handleSave({ rating: userRating });
     if (success) {
       toast({
         title: 'Rating Saved!',
-        description: `You rated ${movieTitle} ${userRating.toFixed(0)} stars.`,
+        description: `You rated ${movieDetails.title} ${userRating.toFixed(0)} stars.`,
       });
     }
   };
@@ -175,22 +173,23 @@ export default function MovieDetailPage({
         if (success) {
             toast({
             title: 'Watched Status Updated!',
-            description: watched ? `Marked "${movieTitle}" as watched.` : `Marked "${movieTitle}" as unwatched.`,
+            description: watched ? `Marked "${movieDetails.title}" as watched.` : `Marked "${movieDetails.title}" as unwatched.`,
             });
         }
     }
 
     if (!user) {
-      // Don't save if not logged in, but we still need to update UI, which is handled by setWatched
       return;
     }
     
-    autoSaveWatched();
+    if (!initialLoadRef.current) {
+        autoSaveWatched();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watched]);
 
 
-  if (loading || authLoading) {
+  if (loading || authLoading || isNaN(movieId)) {
     return <div className="flex justify-center items-center h-64">Loading movie details...</div>;
   }
 
@@ -212,7 +211,7 @@ export default function MovieDetailPage({
         <div className="md:col-span-1">
           <Image
             src={movieDetails.imageUrl}
-            alt={movieTitle}
+            alt={movieDetails.title}
             data-ai-hint={movieDetails.imageHint}
             width={400}
             height={600}
@@ -222,7 +221,7 @@ export default function MovieDetailPage({
         <div className="md:col-span-2 space-y-4">
           <Badge variant="secondary">{movieDetails.genre}</Badge>
           <h1 className="font-headline text-4xl font-bold tracking-tight">
-            {movieTitle}
+            {movieDetails.title}
           </h1>
           <p className="text-xl text-muted-foreground">{movieDetails.year}</p>
 

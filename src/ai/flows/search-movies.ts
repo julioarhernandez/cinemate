@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -55,6 +56,7 @@ const searchMoviesFlow = ai.defineFlow(
       const data = await response.json();
 
       const movies: Movie[] = data.results.map((movie: any) => ({
+        id: movie.id,
         title: movie.title,
         year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
         genre: '', // Genre data not in this response, fetched on details page.

@@ -1,5 +1,6 @@
 
 export interface Movie {
+  id: number;
   title: string;
   year: string;
   genre?: string;
@@ -11,6 +12,7 @@ export interface Movie {
 
 export const movies: Movie[] = [
     {
+      id: 1,
       title: 'Cosmic Echo',
       year: '2024',
       genre: 'Sci-Fi',
@@ -19,6 +21,7 @@ export const movies: Movie[] = [
       imageHint: 'sci-fi movie poster',
     },
     {
+      id: 2,
       title: 'Midnight Whispers',
       year: '2023',
       genre: 'Thriller',
@@ -27,6 +30,7 @@ export const movies: Movie[] = [
       imageHint: 'thriller movie poster',
     },
     {
+      id: 3,
       title: 'The Last Stand',
       year: '2024',
       genre: 'Action',
@@ -35,6 +39,7 @@ export const movies: Movie[] = [
       imageHint: 'action movie poster',
     },
     {
+      id: 4,
       title: 'A Love for Stars',
       year: '2022',
       genre: 'Romance',
@@ -43,6 +48,7 @@ export const movies: Movie[] = [
       imageHint: 'romance movie poster',
     },
     {
+      id: 5,
       title: 'Chronicles of Nowhere',
       year: '2023',
       genre: 'Fantasy',
@@ -51,6 +57,7 @@ export const movies: Movie[] = [
       imageHint: 'fantasy movie poster',
     },
     {
+      id: 6,
       title: 'The Glimmering',
       year: '2024',
       genre: 'Horror',
@@ -59,6 +66,7 @@ export const movies: Movie[] = [
       imageHint: 'horror movie poster',
     },
      {
+      id: 7,
       title: 'Detective Miles',
       year: '2021',
       genre: 'Crime',
@@ -67,6 +75,7 @@ export const movies: Movie[] = [
       imageHint: 'crime movie poster',
     },
      {
+      id: 8,
       title: 'Journey to the Sun',
       year: '2022',
       genre: 'Adventure',
@@ -75,6 +84,7 @@ export const movies: Movie[] = [
       imageHint: 'adventure movie poster',
     },
     {
+      id: 9,
       title: 'Memento',
       year: '2000',
       genre: 'Thriller',
