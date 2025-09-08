@@ -10,7 +10,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Define the input schema
 const MovieDetailsInputSchema = z.object({
@@ -26,6 +26,16 @@ const MovieDetailsOutputSchema = z.object({
   genre: z.string().describe('The genre of the movie.'),
   year: z.string().describe('The release year of the movie.'),
   rating: z.number().describe('The rating of the movie out of 5.'),
+  imageUrl: z
+    .string()
+    .describe(
+      'A public URL for the movie poster. Use https://picsum.photos/400/600 for placeholders.'
+    ),
+  imageHint: z
+    .string()
+    .describe(
+      "A short, two-word hint for the movie poster image, like 'sci-fi poster'."
+    ),
 });
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
@@ -41,7 +51,7 @@ const getMovieDetailsPrompt = ai.definePrompt({
   name: 'getMovieDetailsPrompt',
   input: { schema: MovieDetailsInputSchema },
   output: { schema: MovieDetailsOutputSchema },
-  prompt: `You are a movie database expert. Provide a detailed synopsis, the genre, release year, and a rating out of 5 for the following movie: {{{title}}}.`,
+  prompt: `You are a movie database expert. Provide a detailed synopsis, the genre, release year, a rating out of 5, and a poster image URL for the following movie: {{{title}}}.`,
 });
 
 // Define the flow

@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
-import { searchMovies } from '@/ai/flows/search-movies';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -28,18 +27,11 @@ export default async function MovieDetailPage({
 }) {
   const movieTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
 
-  // We need an image, so we'll search for the movie to get the imageUrl.
-  // In a real app, getMovieDetails would also return an image.
-  const searchResult = await searchMovies({ query: movieTitle });
-  const movieInfo = searchResult.movies.find(
-    (m) => m.title.toLowerCase() === movieTitle.toLowerCase()
-  );
+  const movieDetails = await getMovieDetails({ title: movieTitle });
 
-  if (!movieInfo) {
+  if (!movieDetails) {
     notFound();
   }
-
-  const movieDetails = await getMovieDetails({ title: movieInfo.title });
 
   return (
     <div className="space-y-8">
@@ -54,9 +46,9 @@ export default async function MovieDetailPage({
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
           <Image
-            src={movieInfo.imageUrl}
-            alt={movieInfo.title}
-            data-ai-hint={movieInfo.imageHint}
+            src={movieDetails.imageUrl}
+            alt={movieTitle}
+            data-ai-hint={movieDetails.imageHint}
             width={400}
             height={600}
             className="w-full h-auto object-cover rounded-lg shadow-lg"
@@ -65,7 +57,7 @@ export default async function MovieDetailPage({
         <div className="md:col-span-2 space-y-4">
           <Badge variant="secondary">{movieDetails.genre}</Badge>
           <h1 className="font-headline text-4xl font-bold tracking-tight">
-            {movieInfo.title}
+            {movieTitle}
           </h1>
           <p className="text-xl text-muted-foreground">{movieDetails.year}</p>
 
