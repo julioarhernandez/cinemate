@@ -133,15 +133,23 @@ export default function MoviesPage() {
 
 
   const filteredMovies = useMemo(() => {
-    return movies
-      .map(movie => {
-        const userMovieInfo = userRatings[movie.title];
-        return { ...movie, userRating: userMovieInfo?.rating, watched: userMovieInfo?.watched === true };
-      })
-      .filter(movie => {
+    const moviesWithUserData = movies.map(movie => {
+        const userData = userRatings[movie.title];
+        return {
+            ...movie,
+            watched: userData?.watched === true,
+            userRating: userData?.rating,
+        };
+    });
+
+    return moviesWithUserData.filter(movie => {
         // Watched status filter
-        if (watchedFilter === 'watched' && !movie.watched) return false;
-        if (watchedFilter === 'not-watched' && movie.watched) return false;
+        if (watchedFilter === 'watched') {
+            if (!movie.watched) return false;
+        }
+        if (watchedFilter === 'not-watched') {
+            if (movie.watched) return false;
+        }
 
         // Rating range filter (on user rating)
         const movieUserRating = movie.userRating ?? -1; // Use -1 for unrated
