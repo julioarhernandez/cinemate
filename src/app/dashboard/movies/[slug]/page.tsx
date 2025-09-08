@@ -41,19 +41,16 @@ export default function MovieDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const [movieTitle, setMovieTitle] = useState('');
+  const [movieTitle, setMovieTitle] = useState(() => decodeURIComponent(params.slug.replace(/-/g, ' ')));
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
-  
-  useEffect(() => {
-    const decodedTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
-    setMovieTitle(decodedTitle);
-  }, [params.slug]);
 
   useEffect(() => {
+    // The title is now set from the initial state, so this effect is just for fetching.
     if (!movieTitle) return;
+
     async function fetchDetails() {
       setLoading(true);
       try {
