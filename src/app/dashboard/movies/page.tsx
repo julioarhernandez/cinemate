@@ -20,7 +20,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -109,16 +109,7 @@ export default function MoviesPage() {
       
       const moviesWithGenre = await Promise.all(result.movies.map(async movie => {
         // The genre will be fetched on the details page.
-        // For now, try to get it from our hardcoded list if the TMDB search result doesn't have it
-        const movieDetailsDocRef = doc(db, 'movieDetails', movie.title);
-        try {
-          const docSnap = await getDoc(movieDetailsDocRef);
-          if (docSnap.exists()) {
-            return { ...movie, genre: docSnap.data().genre ?? 'Unknown' };
-          }
-        } catch (e) {
-          // This will fail if rules don't allow it, which is fine. We'll ignore it.
-        }
+        // For now we set it to unknown
         return { ...movie, genre: movie.genre ?? 'Unknown' };
       }));
       setMovies(moviesWithGenre);
@@ -145,7 +136,7 @@ export default function MoviesPage() {
     return movies
       .map(movie => {
         const userMovieInfo = userRatings[movie.title];
-        return { ...movie, userRating: userMovieInfo?.rating, watched: userMovieInfo?.watched };
+        return { ...movie, userRating: userMovieInfo?.rating, watched: userMovieInfo?.watched === true };
       })
       .filter(movie => {
         // Watched status filter
@@ -157,7 +148,6 @@ export default function MoviesPage() {
         if (movieUserRating !== -1 && (movieUserRating < ratingRange[0] || movieUserRating > ratingRange[1])) {
           return false;
         }
-        // If a movie is unrated, it should not be filtered out by the rating slider unless the user specifically wants to see rated movies. Let's assume they want to see everything that doesn't fall outside their range.
 
         // Year range filter
         const movieYear = parseInt(movie.year);
