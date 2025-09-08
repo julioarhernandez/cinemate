@@ -24,7 +24,7 @@ const StarRating = ({ rating }: { rating: number }) => (
       <Star
         key={i}
         className={`h-4 w-4 text-amber-400 ${
-          i < rating ? 'fill-current' : ''
+          i < Math.round(rating / 2) ? 'fill-current' : ''
         }`}
       />
     ))}

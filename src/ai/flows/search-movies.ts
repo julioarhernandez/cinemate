@@ -58,7 +58,7 @@ const searchMoviesFlow = ai.defineFlow(
         title: movie.title,
         year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
         genre: '', // Genre data not in this response, fetched on details page.
-        rating: movie.vote_average ? movie.vote_average / 2 : 0, // Convert 10-point to 5-point rating
+        rating: movie.vote_average ? movie.vote_average : 0,
         imageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : 'https://picsum.photos/400/600',
         imageHint: `${movie.title} poster`,
       }));

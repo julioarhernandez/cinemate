@@ -26,7 +26,7 @@ const MovieDetailsOutputSchema = z.object({
     .describe('A detailed synopsis of the movie.'),
   genre: z.string().describe('The genre of the movie.'),
   year: z.string().describe('The release year of the movie.'),
-  rating: z.number().describe('The rating of the movie out of 5.'),
+  rating: z.number().describe('The rating of the movie out of 10.'),
   imageUrl: z
     .string()
     .describe(
@@ -108,7 +108,7 @@ const getMovieDetailsFlow = ai.defineFlow(
             synopsis: movie.overview || 'No synopsis available.',
             genre: movie.genres && movie.genres.length > 0 ? movie.genres.map((g: any) => g.name).join(', ') : 'N/A',
             year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
-            rating: movie.vote_average ? movie.vote_average / 2 : 0, // Convert 10-point to 5-point rating
+            rating: movie.vote_average ? movie.vote_average : 0,
             imageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : 'https://picsum.photos/400/600',
             imageHint: `${title} poster`,
         };

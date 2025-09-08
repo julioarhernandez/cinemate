@@ -27,7 +27,7 @@ const StarRatingInput = ({
 
   return (
     <div className="flex items-center gap-1">
-      {[...Array(5)].map((_, index) => {
+      {[...Array(10)].map((_, index) => {
         const ratingValue = index + 1;
         return (
           <button
@@ -38,7 +38,7 @@ const StarRatingInput = ({
             onClick={() => setRating(ratingValue)}
           >
             <Star
-              className={`h-8 w-8 cursor-pointer transition-colors ${
+              className={`h-6 w-6 cursor-pointer transition-colors ${
                 ratingValue <= (hover || rating)
                   ? 'text-amber-400 fill-amber-400'
                   : 'text-gray-300'
@@ -186,7 +186,7 @@ export default function MovieDetailPage({
       }
     }
     autoSaveWatched();
-  }, [watched]);
+  }, [watched, user, authLoading, userRating]);
 
 
   if (loading || authLoading) {
@@ -228,7 +228,7 @@ export default function MovieDetailPage({
           <div className="flex items-center gap-2">
             <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
             <span className="text-lg font-bold">
-              {movieDetails.rating.toFixed(1)} / 5.0 (TMDB)
+              {movieDetails.rating.toFixed(1)} / 10.0 (TMDB)
             </span>
           </div>
 
@@ -242,11 +242,11 @@ export default function MovieDetailPage({
 
             <div>
               <Label className="text-lg">Your Rating</Label>
-              <div className="flex items-center gap-4 mt-2">
+              <div className="flex flex-col items-start gap-4 mt-2 sm:flex-row sm:items-center">
                 <StarRatingInput rating={userRating} setRating={setUserRating} />
                 <Button onClick={handleSaveRating}>Save Rating</Button>
               </div>
-               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating} out of 5 stars.` : 'Rate this movie.'}</p>
+               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating} out of 10 stars.` : 'Rate this movie.'}</p>
             </div>
           </div>
 
