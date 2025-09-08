@@ -94,7 +94,7 @@ export default function MovieDetailPage({
         }
         setMovieDetails(details);
         // Set initial rating from TMDB as a fallback. It will be overwritten by user data if it exists.
-        setUserRating(details.rating);
+        setUserRating(Math.round(details.rating));
 
         // 2. Then, fetch user-specific data from Firestore if the user is logged in
         if (user) {
@@ -104,7 +104,7 @@ export default function MovieDetailPage({
           if (ratingDoc.exists()) {
             const data = ratingDoc.data();
             // Overwrite with user's saved data if it exists
-            setUserRating(data.rating || details.rating);
+            setUserRating(data.rating || Math.round(details.rating));
             setWatched(data.watched || false);
           }
         }
@@ -153,7 +153,7 @@ export default function MovieDetailPage({
     if (success) {
       toast({
         title: 'Rating Saved!',
-        description: `You rated ${movieTitle} ${userRating.toFixed(1)} stars.`,
+        description: `You rated ${movieTitle} ${userRating.toFixed(0)} stars.`,
       });
     }
   };
@@ -243,7 +243,7 @@ export default function MovieDetailPage({
                 <StarRatingInput rating={userRating} setRating={setUserRating} />
                 <Button onClick={handleSaveRating}>Save Rating</Button>
               </div>
-               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(1)} out of 10 stars.` : 'Rate this movie.'}</p>
+               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(0)} out of 10 stars.` : 'Rate this movie.'}</p>
             </div>
           </div>
 
