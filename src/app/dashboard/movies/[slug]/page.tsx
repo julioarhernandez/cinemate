@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -55,6 +55,8 @@ export default function MovieDetailPage({
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const { toast } = useToast();
+  const isInitialMount = useRef(true);
+
 
   useEffect(() => {
     if (!movieTitle) return;
@@ -108,33 +110,63 @@ export default function MovieDetailPage({
     fetchUserRating();
   }, [user, movieTitle, movieDetails]); // Re-run when user, title, or movieDetails are available
 
-  const handleSaveRating = async () => {
+  const handleSave = async (ratingToSave: number, watchedToSave: boolean) => {
     if (!user) {
       toast({
         variant: 'destructive',
         title: 'Not Signed In',
-        description: 'You must be signed in to save a rating.',
+        description: 'You must be signed in to save changes.',
       });
       return;
     }
 
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
-      await setDoc(ratingDocRef, { rating: userRating, watched: watched }, { merge: true });
+      await setDoc(ratingDocRef, { rating: ratingToSave, watched: watchedToSave }, { merge: true });
 
+      return true; // Indicate success
+    } catch (error) {
+      console.error('Failed to save data:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Could not save your changes. Please try again.',
+      });
+      return false; // Indicate failure
+    }
+  };
+  
+  const handleSaveRating = async () => {
+    const success = await handleSave(userRating, watched);
+    if (success) {
       toast({
         title: 'Rating Saved!',
         description: `You rated ${movieTitle} ${userRating.toFixed(1)} stars.`,
       });
-    } catch (error) {
-      console.error('Failed to save rating:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'Could not save your rating. Please try again.',
-      });
     }
   };
+
+  useEffect(() => {
+    // This effect handles auto-saving the 'watched' status.
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (!user || authLoading) return;
+
+    async function autoSaveWatched() {
+      const success = await handleSave(userRating, watched);
+      if (success) {
+         toast({
+          title: 'Watched Status Updated!',
+          description: watched ? `Marked "${movieTitle}" as watched.` : `Marked "${movieTitle}" as unwatched.`,
+        });
+      }
+    }
+    autoSaveWatched();
+  }, [watched]);
+
 
   if (loading || authLoading) {
     return <div className="flex justify-center items-center h-64">Loading movie details...</div>;
