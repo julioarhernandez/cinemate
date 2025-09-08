@@ -138,7 +138,7 @@ export default function MovieDetailPage({
         title: 'Not Signed In',
         description: 'You must be signed in to save changes.',
       });
-      return;
+      return false; // Indicate failure
     }
 
     try {
@@ -186,7 +186,7 @@ export default function MovieDetailPage({
       }
     }
     autoSaveWatched();
-  }, [watched, user, authLoading, userRating]);
+  }, [watched, user, authLoading]);
 
 
   if (loading || authLoading) {
