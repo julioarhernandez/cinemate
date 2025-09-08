@@ -38,7 +38,7 @@ const MovieDetailsOutputSchema = z.object({
 });
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
-const fallbackMovie = {
+const fallbackMovie: MovieDetailsOutput = {
   title: 'Unknown Movie',
   synopsis: 'Could not find movie details.',
   genre: 'N/A',
@@ -59,7 +59,10 @@ export async function getMovieDetails({
     if (movie) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id: movieId, ...rest } = movie;
-      return rest;
+      return {
+        ...rest,
+        synopsis: rest.synopsis || 'No synopsis available in local data.',
+      };
     }
     return fallbackMovie;
   }
@@ -69,7 +72,19 @@ export async function getMovieDetails({
 
   try {
     const detailsResponse = await fetch(detailsUrl);
-    if (!detailsResponse.ok) throw new Error('Failed to fetch movie details.');
+    if (!detailsResponse.ok) {
+        // If TMDB fails, try the local fallback
+        const movie = defaultMovies.find((m) => m.id === id);
+        if (movie) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { id: movieId, ...rest } = movie;
+            return {
+                ...rest,
+                synopsis: rest.synopsis || 'No synopsis available in local data.',
+            };
+        }
+        return fallbackMovie;
+    }
     const movie = await detailsResponse.json();
 
     return {
@@ -93,7 +108,10 @@ export async function getMovieDetails({
      if (movie) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id: movieId, ...rest } = movie;
-      return rest;
+       return {
+        ...rest,
+        synopsis: rest.synopsis || 'No synopsis available in local data.',
+      };
     }
     return fallbackMovie;
   }
