@@ -110,13 +110,7 @@ export default function MoviesPage() {
       const moviesWithGenre = await Promise.all(result.movies.map(async movie => {
         // Since search doesn't return genre, we might need a separate call
         // or a smarter search flow. For now, let's see what we get.
-        if (!movie.genre) {
-             const detailsDocRef = doc(db, "movieDetails", movie.title);
-             const docSnap = await getDoc(detailsDocRef);
-             if (docSnap.exists() && docSnap.data().genre) {
-               return { ...movie, genre: docSnap.data().genre };
-             }
-        }
+        // The genre will be fetched on the details page.
         return { ...movie, genre: movie.genre ?? 'Unknown' };
       }));
       setMovies(moviesWithGenre);
