@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for retrieving detailed movie information.
+ * @fileOverview This file defines a Genkit flow for retrieving detailed movie information from TMDB.
  *
  * @exports {getMovieDetails} - The main function to trigger the movie details retrieval flow.
  * @exports {MovieDetailsInput} - The input type for the getMovieDetails function.
@@ -11,6 +11,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { movies as defaultMovies } from '@/lib/movies';
 
 // Define the input schema
 const MovieDetailsInputSchema = z.object({
@@ -46,14 +47,6 @@ export async function getMovieDetails(
   return getMovieDetailsFlow(input);
 }
 
-// Define the prompt
-const getMovieDetailsPrompt = ai.definePrompt({
-  name: 'getMovieDetailsPrompt',
-  input: { schema: MovieDetailsInputSchema },
-  output: { schema: MovieDetailsOutputSchema },
-  prompt: `You are a movie database expert. Provide a detailed synopsis, the genre, release year, a rating out of 5, and a real poster image URL for the following movie: {{{title}}}. Do not use placeholder images.`,
-});
-
 // Define the flow
 const getMovieDetailsFlow = ai.defineFlow(
   {
@@ -61,8 +54,76 @@ const getMovieDetailsFlow = ai.defineFlow(
     inputSchema: MovieDetailsInputSchema,
     outputSchema: MovieDetailsOutputSchema,
   },
-  async (input) => {
-    const { output } = await getMovieDetailsPrompt(input);
-    return output!;
+  async ({ title }) => {
+    if (!process.env.TMDB_API_KEY) {
+      console.error('TMDB_API_KEY is not set. Returning default movie details.');
+      // Find a movie from the default list or return a fallback
+      const fallbackMovie = defaultMovies.find(m => m.title.toLowerCase() === title.toLowerCase()) || {
+        synopsis: 'No details available.',
+        genre: 'N/A',
+        year: 'N/A',
+        rating: 0,
+        imageUrl: 'https://picsum.photos/400/600',
+        imageHint: 'movie poster',
+      };
+      return fallbackMovie;
+    }
+
+    // 1. Search for the movie to get its ID
+    const searchUrl = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(
+      title
+    )}&api_key=${process.env.TMDB_API_KEY}`;
+    
+    let movieId;
+    try {
+        const searchResponse = await fetch(searchUrl);
+        if (!searchResponse.ok) throw new Error('Failed to search for movie.');
+        const searchData = await searchResponse.json();
+        if (searchData.results.length === 0) throw new Error('Movie not found.');
+        movieId = searchData.results[0].id;
+    } catch (error) {
+        console.error('Error searching for movie ID:', error);
+        // Fallback or throw error
+        const fallbackMovie = defaultMovies.find(m => m.title.toLowerCase() === title.toLowerCase()) || {
+            synopsis: 'Could not find movie details.',
+            genre: 'N/A',
+            year: 'N/A',
+            rating: 0,
+            imageUrl: 'https://picsum.photos/400/600',
+            imageHint: 'movie poster',
+          };
+        return fallbackMovie;
+    }
+
+
+    // 2. Fetch detailed information using the movie ID
+    const detailsUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${process.env.TMDB_API_KEY}`;
+    
+    try {
+        const detailsResponse = await fetch(detailsUrl);
+        if (!detailsResponse.ok) throw new Error('Failed to fetch movie details.');
+        const movie = await detailsResponse.json();
+
+        return {
+            synopsis: movie.overview || 'No synopsis available.',
+            genre: movie.genres && movie.genres.length > 0 ? movie.genres.map((g: any) => g.name).join(', ') : 'N/A',
+            year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
+            rating: movie.vote_average ? movie.vote_average / 2 : 0, // Convert 10-point to 5-point rating
+            imageUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w400${movie.poster_path}` : 'https://picsum.photos/400/600',
+            imageHint: `${title} poster`,
+        };
+    } catch (error) {
+        console.error('Error fetching movie details:', error);
+         // Fallback or throw error
+         const fallbackMovie = defaultMovies.find(m => m.title.toLowerCase() === title.toLowerCase()) || {
+            synopsis: 'Could not find movie details.',
+            genre: 'N/A',
+            year: 'N/A',
+            rating: 0,
+            imageUrl: 'https://picsum.photos/400/600',
+            imageHint: 'movie poster',
+          };
+        return fallbackMovie;
+    }
   }
 );
