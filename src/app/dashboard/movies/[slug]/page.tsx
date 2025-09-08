@@ -73,7 +73,7 @@ export default function MovieDetailPage({
 
   if (loading) {
     // Optional: Add a loading state
-    return <div>Loading...</div>;
+    return <div className="flex justify-center items-center h-64">Loading movie details...</div>;
   }
 
   if (!movieDetails) {
