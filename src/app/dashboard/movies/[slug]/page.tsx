@@ -8,11 +8,16 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
+import { saveMovieRating } from '@/ai/flows/save-movie-rating';
+import { getUserMovieRating } from '@/ai/flows/get-movie-rating';
 import { useState, useEffect, use } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -20,7 +25,7 @@ const StarRating = ({ rating }: { rating: number }) => (
       <Star
         key={i}
         className={`h-5 w-5 text-amber-400 ${
-          i < rating ? 'fill-current' : ''
+          i < Math.round(rating) ? 'fill-current' : ''
         }`}
       />
     ))}
@@ -40,12 +45,12 @@ interface MovieDetails {
 export default function MovieDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug:string }>;
 }) {
-  // Unwrap the params Promise using React.use()
   const resolvedParams = use(params);
   const movieTitle = decodeURIComponent(resolvedParams.slug.replace(/-/g, ' '));
-  
+  const [user, authLoading] = useAuthState(auth);
+
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
@@ -53,7 +58,6 @@ export default function MovieDetailPage({
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect runs when movieTitle is set or changes.
     if (!movieTitle) return;
 
     async function fetchDetails() {
@@ -62,7 +66,7 @@ export default function MovieDetailPage({
         const details = await getMovieDetails({ title: movieTitle });
         if (details) {
           setMovieDetails(details);
-          setUserRating(details.rating);
+          // We will set the userRating from Firestore, not from TMDB's rating.
         } else {
           setMovieDetails(null);
         }
@@ -76,17 +80,61 @@ export default function MovieDetailPage({
     fetchDetails();
   }, [movieTitle]);
 
-  const handleSaveRating = () => {
-    // In a real app, you'd save this to a database (e.g., Firestore)
-    console.log(`Saving rating for ${movieTitle}: ${userRating}`);
-    toast({
-      title: 'Rating Saved!',
-      description: `You rated ${movieTitle} ${userRating.toFixed(1)} stars.`,
-    });
+  useEffect(() => {
+    if (!user || !movieTitle) return;
+
+    async function fetchUserRating() {
+      try {
+        const result = await getUserMovieRating({ userId: user.uid, movieTitle });
+        if (result && result.rating !== null) {
+          setUserRating(result.rating);
+          setWatched(result.watched);
+        } else {
+          // If no rating in DB, use TMDB's as a default starting point
+          if (movieDetails) {
+             setUserRating(movieDetails.rating);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user rating", error);
+      }
+    }
+
+    fetchUserRating();
+  }, [user, movieTitle, movieDetails]); // Depend on movieDetails to set default rating
+
+  const handleSaveRating = async () => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Signed In',
+        description: 'You must be signed in to save a rating.',
+      });
+      return;
+    }
+
+    try {
+      await saveMovieRating({
+        userId: user.uid,
+        movieTitle,
+        rating: userRating,
+        watched,
+      });
+      toast({
+        title: 'Rating Saved!',
+        description: `You rated ${movieTitle} ${userRating.toFixed(1)} stars.`,
+      });
+    } catch (error) {
+      console.error('Failed to save rating:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Could not save your rating. Please try again.',
+      });
+    }
   };
 
-  if (loading) {
-    // Optional: Add a loading state
+  if (loading || authLoading) {
     return <div className="flex justify-center items-center h-64">Loading movie details...</div>;
   }
 
