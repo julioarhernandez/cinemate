@@ -8,7 +8,7 @@ export const MovieSchema = z.object({
   imageUrl: z
     .string()
     .describe(
-      'A public URL for the movie poster. Use https://picsum.photos/400/600 for placeholders.'
+      'A public URL for the movie poster. Find a real poster, do not use placeholders.'
     ),
   imageHint: z
     .string()
