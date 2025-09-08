@@ -13,13 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Clapperboard } from 'lucide-react';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-background">
       <Image
-        src="https://picsum.photos/1920/1080"
+        src="https://picsum.photos/1920/1080?grayscale"
         alt="Background"
-        data-ai-hint="cinema background"
+        data-ai-hint="cinema abstract"
         fill
         className="absolute inset-0 -z-10 h-full w-full object-cover opacity-20"
       />
@@ -31,35 +31,44 @@ export default function LoginPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="font-headline text-2xl">Welcome Back</CardTitle>
+          <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Sign in to your account to continue
+            Join CineMate and start your movie journey
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-2">
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" type="text" placeholder="John Doe" required />
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="m@example.com" />
+            <Input
+              id="email"
+              type="email"
+              placeholder="m@example.com"
+              required
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" />
+            <Input id="password" type="password" required />
           </div>
-          <Button asChild className="w-full bg-accent hover:bg-accent/90">
-            <Link href="#">Sign in with Google</Link>
+           <Button asChild className="w-full bg-accent hover:bg-accent/90">
+            <Link href="#">Sign up with Google</Link>
           </Button>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button asChild className="w-full">
-            <Link href="/dashboard">Sign In</Link>
+            <Link href="/dashboard">Register</Link>
           </Button>
           <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
+            Already have an account?{' '}
             <Link
-              href="/register"
+              href="/"
               className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
             >
-              Register
+              Sign In
             </Link>
           </div>
         </CardFooter>
