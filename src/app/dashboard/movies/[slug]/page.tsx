@@ -135,11 +135,6 @@ export default function MovieDetailPage({
   
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
-      // Use the most up-to-date state values when saving
-      const currentData = {
-        rating: 'rating' in dataToSave ? dataToSave.rating : userRating,
-        watched: 'watched' in dataToSave ? dataToSave.watched : watched,
-      }
       await setDoc(ratingDocRef, dataToSave, { merge: true });
       return true;
     } catch (error) {
