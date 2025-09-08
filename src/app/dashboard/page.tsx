@@ -1,3 +1,7 @@
+
+"use client";
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Activity,
@@ -5,6 +9,7 @@ import {
   Film,
   Users,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,24 +19,50 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, where, getCountFromServer } from 'firebase/firestore';
+
 
 export default function DashboardPage() {
+  const [user] = useAuthState(auth);
+  const [watchedCount, setWatchedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      const getWatchedCount = async () => {
+        try {
+          const ratingsCol = collection(db, 'users', user.uid, 'ratings');
+          const q = query(ratingsCol, where('watched', '==', true));
+          const snapshot = await getCountFromServer(q);
+          setWatchedCount(snapshot.data().count);
+        } catch (error) {
+          console.error("Error fetching watched movies count: ", error);
+          setWatchedCount(0);
+        }
+      };
+      getWatchedCount();
+    } else {
+      setWatchedCount(0);
+    }
+  }, [user]);
+
   const stats = [
     {
-      title: 'Movies Rated',
-      value: '78',
+      title: 'Movies Watched',
+      value: watchedCount,
       icon: Film,
       color: 'text-sky-500',
     },
     {
       title: 'Friends',
-      value: '12',
+      value: '12', // This can be made dynamic later
       icon: Users,
       color: 'text-amber-500',
     },
     {
       title: 'AI Recommendations',
-      value: '5',
+      value: '5', // This can be made dynamic later
       icon: Sparkles,
       color: 'text-violet-500',
     },
@@ -41,7 +72,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Welcome back, Alex!
+          Welcome back, {user?.displayName?.split(' ')[0] || 'there'}!
         </h1>
         <p className="text-muted-foreground">
           Here's a quick look at your CineMate world.
@@ -58,7 +89,13 @@ export default function DashboardPage() {
               <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="text-2xl font-bold">
+                {stat.value === null ? (
+                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                ) : (
+                  stat.value
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
