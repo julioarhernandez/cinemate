@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { movies as defaultMovies, type Movie } from '@/lib/movies';
 import { searchMovies } from '@/ai/flows/search-movies';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useToast } from '@/hooks/use-toast';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -35,6 +36,7 @@ export default function MoviesPage() {
   const [movies, setMovies] = useState<Movie[]>(defaultMovies);
   const [loading, setLoading] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const { toast } = useToast();
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query) {
@@ -47,11 +49,16 @@ export default function MoviesPage() {
       setMovies(result.movies);
     } catch (error) {
       console.error('Failed to search for movies:', error);
-      // Optionally, show a toast notification to the user
+      toast({
+        variant: 'destructive',
+        title: 'Search Failed',
+        description:
+          'Could not fetch movie results. The service might be temporarily unavailable. Please try again in a moment.',
+      });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     handleSearch(debouncedSearchTerm);
