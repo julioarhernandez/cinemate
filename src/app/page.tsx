@@ -15,6 +15,7 @@ import {
 import { Clapperboard } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import type { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,9 +24,13 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      // You can handle successful sign-in here, e.g., redirect to the dashboard
       router.push('/dashboard');
     } catch (error) {
+      const firebaseError = error as FirebaseError;
+      // Don't show an error toast if the user closes the popup
+      if (firebaseError.code === 'auth/cancelled-popup-request') {
+        return;
+      }
       console.error("Google Sign-In Error:", error);
       toast({
         variant: "destructive",
