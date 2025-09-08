@@ -8,10 +8,11 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { useToast } from '@/hooks/use-toast';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -39,13 +40,17 @@ interface MovieDetails {
 export default function MovieDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const movieTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
+  // Unwrap the params Promise using React.use()
+  const resolvedParams = use(params);
+  const movieTitle = decodeURIComponent(resolvedParams.slug.replace(/-/g, ' '));
+  
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     // This effect runs when movieTitle is set or changes.
@@ -70,6 +75,15 @@ export default function MovieDetailPage({
     }
     fetchDetails();
   }, [movieTitle]);
+
+  const handleSaveRating = () => {
+    // In a real app, you'd save this to a database (e.g., Firestore)
+    console.log(`Saving rating for ${movieTitle}: ${userRating}`);
+    toast({
+      title: 'Rating Saved!',
+      description: `You rated ${movieTitle} ${userRating.toFixed(1)} stars.`,
+    });
+  };
 
   if (loading) {
     // Optional: Add a loading state
@@ -135,7 +149,7 @@ export default function MovieDetailPage({
                   onValueChange={(value) => setUserRating(value[0])}
                   className="w-[200px]"
                 />
-                <Button>Save Rating</Button>
+                <Button onClick={handleSaveRating}>Save Rating</Button>
               </div>
             </div>
           </div>
