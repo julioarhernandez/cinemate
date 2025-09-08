@@ -38,25 +38,30 @@ const MovieDetailsOutputSchema = z.object({
 });
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
+const fallbackMovie = {
+  title: 'Unknown Movie',
+  synopsis: 'Could not find movie details.',
+  genre: 'N/A',
+  year: 'N/A',
+  rating: 0,
+  imageUrl: 'https://picsum.photos/400/600',
+  imageHint: 'movie poster',
+};
+
+
 // Define the main function to fetch movie details
 export async function getMovieDetails({
   id,
 }: MovieDetailsInput): Promise<MovieDetailsOutput> {
   if (!process.env.TMDB_API_KEY) {
     console.error('TMDB_API_KEY is not set. Returning default movie details.');
-    const fallbackMovie = defaultMovies.find((m) => m.id === id) || {
-      id: 0,
-      title: 'Unknown Movie',
-      synopsis: 'No details available.',
-      genre: 'N/A',
-      year: 'N/A',
-      rating: 0,
-      imageUrl: 'https://picsum.photos/400/600',
-      imageHint: 'movie poster',
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id: movieId, ...rest } = fallbackMovie;
-    return rest;
+    const movie = defaultMovies.find((m) => m.id === id);
+    if (movie) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id: movieId, ...rest } = movie;
+      return rest;
+    }
+    return fallbackMovie;
   }
 
   // Fetch detailed information using the movie ID
@@ -84,17 +89,12 @@ export async function getMovieDetails({
   } catch (error) {
     console.error('Error fetching movie details:', error);
     // Fallback or throw error
-    const fallbackMovie = defaultMovies.find((m) => m.id === id) || {
-      title: 'Unknown Movie',
-      synopsis: 'Could not find movie details.',
-      genre: 'N/A',
-      year: 'N/A',
-      rating: 0,
-      imageUrl: 'https://picsum.photos/400/600',
-      imageHint: 'movie poster',
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id: movieId, ...rest } = fallbackMovie;
-    return rest;
+    const movie = defaultMovies.find((m) => m.id === id);
+     if (movie) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id: movieId, ...rest } = movie;
+      return rest;
+    }
+    return fallbackMovie;
   }
 }
