@@ -41,7 +41,7 @@ export default function MovieDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const [movieTitle, setMovieTitle] = useState(decodeURIComponent(params.slug.replace(/-/g, ' ')));
+  const movieTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
