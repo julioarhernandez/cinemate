@@ -116,8 +116,9 @@ export default function MovieDetailPage({
         setMovieDetails(null);
       } finally {
         setLoading(false);
-        setIsDataLoaded(true);
+        // Use a timeout to ensure this runs after the initial state updates have settled
         setTimeout(() => {
+          setIsDataLoaded(true);
           initialLoadRef.current = false;
         }, 100);
       }
@@ -166,6 +167,7 @@ export default function MovieDetailPage({
   };
 
   useEffect(() => {
+    // Prevent saving on the initial render cycle
     if (initialLoadRef.current || !isDataLoaded || !movieDetails) {
         return;
     }
@@ -180,13 +182,12 @@ export default function MovieDetailPage({
         }
     }
 
-    if (!user) {
-      return;
+    // Only save if the user is logged in
+    if (user) {
+      autoSaveWatched();
     }
-    
-    autoSaveWatched();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watched]);
+  }, [watched, isDataLoaded]);
 
 
   if (loading || authLoading || isNaN(movieId)) {
