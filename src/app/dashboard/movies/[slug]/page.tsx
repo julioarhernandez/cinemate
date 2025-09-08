@@ -1,4 +1,3 @@
-import { movies } from '@/lib/movies';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
+import { searchMovies } from '@/ai/flows/search-movies';
 
 const StarRating = ({ rating }: { rating: number }) => (
   <div className="flex items-center gap-1">
@@ -26,10 +26,13 @@ export default async function MovieDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const movieInfo = movies.find(
-    (m) =>
-      encodeURIComponent(m.title.toLowerCase().replace(/ /g, '-')) ===
-      params.slug
+  const movieTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
+
+  // We need an image, so we'll search for the movie to get the imageUrl.
+  // In a real app, getMovieDetails would also return an image.
+  const searchResult = await searchMovies({ query: movieTitle });
+  const movieInfo = searchResult.movies.find(
+    (m) => m.title.toLowerCase() === movieTitle.toLowerCase()
   );
 
   if (!movieInfo) {
