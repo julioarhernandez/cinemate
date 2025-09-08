@@ -21,7 +21,7 @@ export default async function MovieDetailPage({
 
   const movieDetails = await getMovieDetails({ id: movieId });
 
-  if (!movieDetails || movieDetails.title === 'Unknown Movie') {
+  if (!movieDetails) {
     notFound();
   }
 
