@@ -11,25 +11,46 @@ import { getMovieDetails } from '@/ai/flows/get-movie-details';
 import { useState, useEffect, use, useRef } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
+const StarRatingInput = ({
+  rating,
+  setRating,
+}: {
+  rating: number;
+  setRating: (rating: number) => void;
+}) => {
+  const [hover, setHover] = useState(0);
 
-const StarRating = ({ rating }: { rating: number }) => (
-  <div className="flex items-center gap-1">
-    {[...Array(5)].map((_, i) => (
-      <Star
-        key={i}
-        className={`h-5 w-5 text-amber-400 ${
-          i < Math.round(rating) ? 'fill-current' : ''
-        }`}
-      />
-    ))}
-  </div>
-);
+  return (
+    <div className="flex items-center gap-1">
+      {[...Array(5)].map((_, index) => {
+        const ratingValue = index + 1;
+        return (
+          <button
+            key={index}
+            type="button"
+            onMouseEnter={() => setHover(ratingValue)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => setRating(ratingValue)}
+          >
+            <Star
+              className={`h-8 w-8 cursor-pointer transition-colors ${
+                ratingValue <= (hover || rating)
+                  ? 'text-amber-400 fill-amber-400'
+                  : 'text-gray-300'
+              }`}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 
 // Define the type for the movie details to avoid using 'any'
 interface MovieDetails {
@@ -204,8 +225,8 @@ export default function MovieDetailPage({
           </h1>
           <p className="text-xl text-muted-foreground">{movieDetails.year}</p>
 
-          <div className="flex items-center gap-4">
-            <StarRating rating={movieDetails.rating} />
+          <div className="flex items-center gap-2">
+            <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
             <span className="text-lg font-bold">
               {movieDetails.rating.toFixed(1)} / 5.0 (TMDB)
             </span>
@@ -220,19 +241,12 @@ export default function MovieDetailPage({
             </div>
 
             <div>
-              <Label htmlFor="rating-slider" className="text-lg">Your Rating: {userRating.toFixed(1)}</Label>
+              <Label className="text-lg">Your Rating</Label>
               <div className="flex items-center gap-4 mt-2">
-                <Slider
-                  id="rating-slider"
-                  min={0}
-                  max={5}
-                  step={0.5}
-                  value={[userRating]}
-                  onValueChange={(value) => setUserRating(value[0])}
-                  className="w-[200px]"
-                />
+                <StarRatingInput rating={userRating} setRating={setUserRating} />
                 <Button onClick={handleSaveRating}>Save Rating</Button>
               </div>
+               <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating} out of 5 stars.` : 'Rate this movie.'}</p>
             </div>
           </div>
 
