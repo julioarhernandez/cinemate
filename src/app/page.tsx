@@ -1,5 +1,8 @@
+"use client";
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,8 +15,28 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Clapperboard } from 'lucide-react';
+import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      // You can handle successful sign-in here, e.g., redirect to the dashboard
+      router.push('/dashboard');
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      toast({
+        variant: "destructive",
+        title: "Sign-In Failed",
+        description: "Could not sign in with Google. Please try again.",
+      });
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-background">
       <Image
@@ -45,8 +68,8 @@ export default function LoginPage() {
             <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" />
           </div>
-          <Button asChild className="w-full bg-accent hover:bg-accent/90">
-            <Link href="#">Sign in with Google</Link>
+          <Button onClick={handleGoogleSignIn} className="w-full bg-accent hover:bg-accent/90">
+            Sign in with Google
           </Button>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
