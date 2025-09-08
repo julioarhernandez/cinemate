@@ -93,7 +93,8 @@ export default function MovieDetailPage({
           return;
         }
         setMovieDetails(details);
-        setUserRating(details.rating); // Set initial rating from TMDB as a fallback
+        // Set initial rating from TMDB as a fallback. It will be overwritten by user data if it exists.
+        setUserRating(details.rating);
 
         // 2. Then, fetch user-specific data from Firestore if the user is logged in
         if (user) {
@@ -134,6 +135,11 @@ export default function MovieDetailPage({
   
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
+      // Use the most up-to-date state values when saving
+      const currentData = {
+        rating: 'rating' in dataToSave ? dataToSave.rating : userRating,
+        watched: 'watched' in dataToSave ? dataToSave.watched : watched,
+      }
       await setDoc(ratingDocRef, dataToSave, { merge: true });
       return true;
     } catch (error) {
