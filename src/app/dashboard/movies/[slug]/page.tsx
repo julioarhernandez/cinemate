@@ -65,6 +65,8 @@ export default function MovieDetailPage({
         const details = await getMovieDetails({ title: movieTitle });
         if (details) {
           setMovieDetails(details);
+          // Set initial rating from TMDB, will be overwritten by user's if it exists
+          setUserRating(details.rating);
         } else {
           setMovieDetails(null);
         }
@@ -79,7 +81,9 @@ export default function MovieDetailPage({
   }, [movieTitle]);
 
   useEffect(() => {
-    if (!user || !movieTitle) return;
+    // This effect runs when user or movieDetails state changes.
+    // It's responsible for fetching the user's specific rating data from Firestore.
+    if (!user || !movieTitle || !movieDetails) return;
 
     async function fetchUserRating() {
       try {
@@ -88,13 +92,13 @@ export default function MovieDetailPage({
         
         if (ratingDoc.exists()) {
           const data = ratingDoc.data();
-          setUserRating(data.rating || 0);
+          // If a user rating exists, it overwrites the default TMDB one
+          setUserRating(data.rating || movieDetails.rating);
           setWatched(data.watched || false);
         } else {
-          // If no rating in DB, use TMDB's as a default starting point
-          if (movieDetails) {
-             setUserRating(movieDetails.rating);
-          }
+           // If no rating in DB, use TMDB's as a default starting point
+           setUserRating(movieDetails.rating);
+           setWatched(false);
         }
       } catch (error) {
         console.error("Failed to fetch user rating", error);
@@ -102,7 +106,7 @@ export default function MovieDetailPage({
     }
 
     fetchUserRating();
-  }, [user, movieTitle, movieDetails]); // Depend on movieDetails to set default rating
+  }, [user, movieTitle, movieDetails]); // Re-run when user, title, or movieDetails are available
 
   const handleSaveRating = async () => {
     if (!user) {
