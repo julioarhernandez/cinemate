@@ -12,8 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Clapperboard } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -60,22 +58,11 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="m@example.com" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" />
-          </div>
           <Button onClick={handleGoogleSignIn} className="w-full bg-accent hover:bg-accent/90">
             Sign in with Google
           </Button>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button asChild className="w-full">
-            <Link href="/dashboard">Sign In</Link>
-          </Button>
           <div className="text-center text-sm text-muted-foreground">
             Don't have an account?{' '}
             <Link
