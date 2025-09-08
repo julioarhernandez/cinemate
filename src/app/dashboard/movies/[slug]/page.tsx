@@ -48,15 +48,14 @@ export default function MovieDetailPage({
   const [userRating, setUserRating] = useState(0);
   
   useEffect(() => {
-    if (params.slug) {
-      const decodedTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
-      setMovieTitle(decodedTitle);
-    }
+    const decodedTitle = decodeURIComponent(params.slug.replace(/-/g, ' '));
+    setMovieTitle(decodedTitle);
   }, [params.slug]);
 
   useEffect(() => {
     if (!movieTitle) return;
     async function fetchDetails() {
+      setLoading(true);
       try {
         const details = await getMovieDetails({ title: movieTitle });
         if (details) {
