@@ -8,15 +8,14 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
-import { saveMovieRating } from '@/ai/flows/save-movie-rating';
-import { getUserMovieRating } from '@/ai/flows/get-movie-rating';
 import { useState, useEffect, use } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 
 const StarRating = ({ rating }: { rating: number }) => (
@@ -66,7 +65,6 @@ export default function MovieDetailPage({
         const details = await getMovieDetails({ title: movieTitle });
         if (details) {
           setMovieDetails(details);
-          // We will set the userRating from Firestore, not from TMDB's rating.
         } else {
           setMovieDetails(null);
         }
@@ -85,10 +83,13 @@ export default function MovieDetailPage({
 
     async function fetchUserRating() {
       try {
-        const result = await getUserMovieRating({ userId: user.uid, movieTitle });
-        if (result && result.rating !== null) {
-          setUserRating(result.rating);
-          setWatched(result.watched);
+        const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
+        const ratingDoc = await getDoc(ratingDocRef);
+        
+        if (ratingDoc.exists()) {
+          const data = ratingDoc.data();
+          setUserRating(data.rating || 0);
+          setWatched(data.watched || false);
         } else {
           // If no rating in DB, use TMDB's as a default starting point
           if (movieDetails) {
@@ -114,12 +115,9 @@ export default function MovieDetailPage({
     }
 
     try {
-      await saveMovieRating({
-        userId: user.uid,
-        movieTitle,
-        rating: userRating,
-        watched,
-      });
+      const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
+      await setDoc(ratingDocRef, { rating: userRating, watched }, { merge: true });
+
       toast({
         title: 'Rating Saved!',
         description: `You rated ${movieTitle} ${userRating.toFixed(1)} stars.`,

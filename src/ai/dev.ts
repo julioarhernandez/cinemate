@@ -4,5 +4,3 @@ config();
 import '@/ai/flows/ai-movie-recommendation.ts';
 import '@/ai/flows/get-movie-details.ts';
 import '@/ai/flows/search-movies.ts';
-import '@/ai/flows/save-movie-rating.ts';
-import '@/ai/flows/get-movie-rating.ts';
