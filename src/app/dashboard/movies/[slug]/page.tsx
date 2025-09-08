@@ -105,7 +105,7 @@ export default function MovieDetailPage({
             const data = ratingDoc.data();
             // Overwrite with user's saved data if it exists
             setUserRating(data.rating || Math.round(details.rating));
-            setWatched(data.watched || false);
+            setWatched(data.watched === true);
           }
         }
       } catch (error) {
