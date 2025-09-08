@@ -41,15 +41,11 @@ export default function MovieDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const [movieTitle, setMovieTitle] = useState('');
+  const [movieTitle, setMovieTitle] = useState(decodeURIComponent(params.slug.replace(/-/g, ' ')));
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [watched, setWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
-
-  useEffect(() => {
-    setMovieTitle(decodeURIComponent(params.slug.replace(/-/g, ' ')));
-  }, [params.slug]);
 
   useEffect(() => {
     // This effect runs when movieTitle is set or changes.
