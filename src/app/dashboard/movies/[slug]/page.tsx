@@ -86,16 +86,16 @@ export default function MovieDetailPage({
     async function fetchDetailsAndUserRating() {
       setLoading(true);
       try {
-        // 1. Fetch movie details
+        // 1. Fetch movie details first
         const details = await getMovieDetails({ title: movieTitle });
         if (!details) {
           setMovieDetails(null);
           return;
         }
         setMovieDetails(details);
-        setUserRating(details.rating); // Set initial rating from TMDB
+        setUserRating(details.rating); // Set initial rating from TMDB as a fallback
 
-        // 2. Fetch user rating from Firestore once user is available
+        // 2. Then, fetch user-specific data from Firestore if the user is logged in
         if (user) {
           const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
           const ratingDoc = await getDoc(ratingDocRef);
@@ -115,28 +115,27 @@ export default function MovieDetailPage({
       }
     }
 
-    // Only run this when the user is loaded (or not logged in)
+    // Only run this when the auth state is resolved (user is loaded or not logged in)
     if (!authLoading) {
       fetchDetailsAndUserRating();
     }
 
   }, [movieTitle, user, authLoading]); // Re-run when user or auth state changes
   
-  const handleSave = async (ratingToSave: number, watchedToSave: boolean) => {
+  const handleSave = async (dataToSave: { rating?: number; watched?: boolean }) => {
     if (!user) {
       toast({
         variant: 'destructive',
         title: 'Not Signed In',
         description: 'You must be signed in to save changes.',
       });
-      return false; // Indicate failure
+      return false;
     }
-
+  
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieTitle);
-      await setDoc(ratingDocRef, { rating: ratingToSave, watched: watchedToSave }, { merge: true });
-
-      return true; // Indicate success
+      await setDoc(ratingDocRef, dataToSave, { merge: true });
+      return true;
     } catch (error) {
       console.error('Failed to save data:', error);
       toast({
@@ -144,12 +143,12 @@ export default function MovieDetailPage({
         title: 'Save Failed',
         description: 'Could not save your changes. Please try again.',
       });
-      return false; // Indicate failure
+      return false;
     }
   };
   
   const handleSaveRating = async () => {
-    const success = await handleSave(userRating, watched);
+    const success = await handleSave({ rating: userRating });
     if (success) {
       toast({
         title: 'Rating Saved!',
@@ -173,7 +172,7 @@ export default function MovieDetailPage({
     if (!movieDetails) return;
 
     async function autoSaveWatched() {
-      const success = await handleSave(userRating, watched);
+      const success = await handleSave({ watched: watched });
       if (success) {
          toast({
           title: 'Watched Status Updated!',
@@ -182,6 +181,7 @@ export default function MovieDetailPage({
       }
     }
     autoSaveWatched();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watched]);
 
 
