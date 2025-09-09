@@ -83,11 +83,13 @@ export default function CollectionsPage() {
         const moviePromises = movieIds.map(id => getMovieDetails({ id }));
         const moviesData = await Promise.all(moviePromises);
 
-        const fetchedMovies = moviesData.filter(m => m.title !== 'Unknown Movie').map(m => ({
-          ...m,
-          genre: m.genre || 'Unknown', // Ensure genre is not undefined
-          synopsis: m.synopsis || 'No synopsis available.',
-        }));
+        const fetchedMovies = moviesData
+          .filter((m): m is Movie => !!m && m.title !== 'Unknown Movie') // Ensure movie is not null/undefined
+          .map(m => ({
+            ...m,
+            genre: m.genre || 'Unknown',
+            synopsis: m.synopsis || 'No synopsis available.',
+          }));
 
         setMovies(fetchedMovies);
 
