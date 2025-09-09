@@ -298,7 +298,7 @@ export default function DashboardPage() {
                               <span>&middot;</span>
                               <div className="flex items-center gap-1 text-amber-500">
                                 <Star className="h-3 w-3 fill-current" />
-                                <span>{item.rating}/10</span>
+                                <span>{item.rating}</span>
                               </div>
                             </>
                           )}
