@@ -88,18 +88,10 @@ export default function FriendsPage() {
     try {
       // 1. Check if user exists
       const usersRef = collection(db, 'users');
-      // This is a simplification. In a real app, you wouldn't store user data directly on the client.
-      // We are assuming a `users` collection exists with public profiles.
       const userQuery = query(usersRef, where('email', '==', searchEmail));
       const querySnapshot = await getDocs(userQuery);
 
       if (querySnapshot.empty) {
-        // In a real app, you would have a more robust user search.
-        // For this example, we'll check our local `friends` array which is a stand-in.
-        const foundUserDoc = querySnapshot.docs[0];
-        
-        // This is a fallback to simulate finding a user if the above query fails.
-        // This should be replaced with a secure server-side search in a production app.
         toast({ variant: 'destructive', title: 'User not found.' });
         setIsSearching(false);
         return;
@@ -496,5 +488,3 @@ export default function FriendsPage() {
     </div>
   );
 }
-
-    
