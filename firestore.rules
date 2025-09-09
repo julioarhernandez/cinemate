@@ -1,0 +1,64 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own profile and friends can read it.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Friends can read user profiles.
+      allow read: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+    }
+
+    // Users can be searched by anyone authenticated.
+    match /users/{document=**} {
+      allow list: if request.auth != null;
+    }
+
+    // Ratings & Watched list
+    match /users/{userId}/ratings/{ratingId} {
+      // Users can manage their own ratings
+      allow read, write: if request.auth.uid == userId;
+      // Friends can read ratings.
+      allow read: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+    }
+
+    // AI Recommendations history
+    match /users/{userId}/recommendations/{recommendationId} {
+       allow read, write: if request.auth.uid == userId;
+    }
+
+    // Friends lists
+    match /users/{userId}/friends/{friendId} {
+        // Users can manage their own friends list.
+        allow read, write, delete: if request.auth.uid == userId;
+        
+        // The recipient of a friend request can write to the sender's friend list
+        // to complete the friendship, but only if the request exists.
+        allow write: if request.auth != null &&
+                     request.auth.uid == friendId &&
+                     exists(/databases/$(database)/documents/friendRequests/{requestId}) &&
+                     get(/databases/$(database)/documents/friendRequests/{requestId}).data.from == userId &&
+                     get(/databases/$(database)/documents/friendRequests/{requestId}).data.to == request.auth.uid;
+    }
+
+    // Friend requests
+    match /friendRequests/{requestId} {
+      // Users can read requests they sent or received.
+      allow read: if request.auth != null && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      
+      // Users can create requests they are sending.
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid;
+      
+      // Users can delete/cancel requests they sent.
+      // Users can delete/decline requests they received.
+      allow delete: if request.auth != null && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+
+      // Allow a user to update a request to 'declined' if they are the recipient.
+      allow update: if request.auth != null && 
+                       resource.data.to == request.auth.uid &&
+                       request.resource.data.status == 'declined';
+    }
+  }
+}
