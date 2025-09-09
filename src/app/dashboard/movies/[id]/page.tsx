@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
 import { MovieDetailsClient } from '@/components/movie-details-client';
+import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 
+// This is now a Server Component. It fetches data on the server.
 export default async function MovieDetailPage({
   params,
 }: {
@@ -19,9 +22,12 @@ export default async function MovieDetailPage({
     notFound();
   }
 
-  const movieDetails = await getMovieDetails({ id: movieId });
+  // Fetch movie details on the server.
+  const movieDetails: MovieDetailsOutput = await getMovieDetails({ id: movieId });
 
-  if (!movieDetails) {
+  // If getMovieDetails returns a value that signifies not found (like a title of 'Unknown Movie'),
+  // we can decide to show a 404. Let's assume 'Unknown Movie' is the indicator.
+  if (movieDetails.title === 'Unknown Movie') {
     notFound();
   }
 
@@ -60,6 +66,7 @@ export default async function MovieDetailPage({
             </span>
           </div>
 
+          {/* All client-side interaction is now in this component */}
           <MovieDetailsClient movieDetails={movieDetails} movieId={movieId} />
 
           <div className="pt-4">
