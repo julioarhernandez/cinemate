@@ -80,7 +80,7 @@ export default function DashboardPage() {
           const friendsSnapshot = await getDocs(friendsRef);
           const friends = friendsSnapshot.docs.map((doc) => ({
             id: doc.id,
-            ...doc.data(),
+            ...(doc.data() as { displayName: string; photoURL?: string }),
           }));
 
           if (friends.length === 0) {
@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
           // 2. Fetch recent ratings for all friends
           let allRatings: {
-            friend: { id: string; displayName: string };
+            friend: { id: string; displayName: string; photoURL?: string };
             movieId: string;
             watchedAt: Timestamp;
           }[] = [];
@@ -111,7 +111,7 @@ export default function DashboardPage() {
               // Filter in the code instead of in the query
               if (data.watched === true && data.isPrivate !== true) {
                  allRatings.push({
-                    friend: { id: friend.id, displayName: friend.displayName },
+                    friend: { id: friend.id, displayName: friend.displayName, photoURL: friend.photoURL },
                     movieId: doc.id,
                     watchedAt: data.updatedAt,
                 });
