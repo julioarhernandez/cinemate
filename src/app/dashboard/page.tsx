@@ -22,21 +22,24 @@ import {
 } from '@/components/ui/card';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getCountFromServer, getDocs } from 'firebase/firestore';
-import {
-  getFriendActivity,
-  type GetFriendActivityOutput,
-} from '@/ai/flows/get-friend-activity';
+import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
+interface FriendActivityItem {
+  friend: { id: string; displayName: string; photoURL?: string; };
+  movie: MovieDetailsOutput;
+  watchedAt: Timestamp;
+}
+
 export default function DashboardPage() {
   const [user] = useAuthState(auth);
   const [watchedCount, setWatchedCount] = useState<number | null>(null);
   const [friendCount, setFriendCount] = useState<number | null>(null);
-  const [friendActivity, setFriendActivity] = useState<GetFriendActivityOutput | null>(null);
+  const [friendActivity, setFriendActivity] = useState<FriendActivityItem[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
 
   useEffect(() => {
@@ -66,12 +69,80 @@ export default function DashboardPage() {
 
       const fetchFriendActivity = async () => {
         setLoadingActivity(true);
+        if (!user) {
+          setLoadingActivity(false);
+          return;
+        }
+        
         try {
-          const activity = await getFriendActivity(user.uid);
-          setFriendActivity(activity);
+          // 1. Get the user's friends
+          const friendsRef = collection(db, 'users', user.uid, 'friends');
+          const friendsSnapshot = await getDocs(friendsRef);
+          const friends = friendsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          if (friends.length === 0) {
+            setFriendActivity([]);
+            setLoadingActivity(false);
+            return;
+          }
+
+          // 2. Fetch recent ratings for all friends
+          let allRatings: {
+            friend: { id: string; displayName: string };
+            movieId: string;
+            watchedAt: Timestamp;
+          }[] = [];
+
+          for (const friend of friends) {
+            const ratingsRef = collection(db, 'users', friend.id, 'ratings');
+            const q = query(
+              ratingsRef,
+              where('watched', '==', true),
+              where('isPrivate', '==', false),
+              orderBy('updatedAt', 'desc'),
+              limit(10) // Get the last 10 activities per friend to keep it manageable
+            );
+            const ratingsSnapshot = await getDocs(q);
+
+            ratingsSnapshot.forEach((doc) => {
+              const data = doc.data();
+              allRatings.push({
+                friend: { id: friend.id, displayName: friend.displayName },
+                movieId: doc.id,
+                watchedAt: data.updatedAt,
+              });
+            });
+          }
+
+          // 3. Sort all activities by date and take the latest 10
+          allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
+          const latestRatings = allRatings.slice(0, 10);
+
+          // 4. Fetch movie details for the latest 10
+          const activityWithMovieDetails = await Promise.all(
+            latestRatings.map(async (rating) => {
+              const movieDetails = await getMovieDetails({
+                id: parseInt(rating.movieId, 10),
+              });
+              return {
+                friend: rating.friend,
+                movie: movieDetails,
+                watchedAt: rating.watchedAt,
+              };
+            })
+          );
+          
+          // Filter out any movies that couldn't be found
+          const finalActivity = activityWithMovieDetails.filter(item => item.movie && item.movie.title !== 'Unknown Movie');
+          
+          setFriendActivity(finalActivity as FriendActivityItem[]);
+
         } catch (error) {
           console.error("Error fetching friend activity: ", error);
-          setFriendActivity({ activity: [] });
+          setFriendActivity([]);
         } finally {
           setLoadingActivity(false);
         }
@@ -175,14 +246,14 @@ export default function DashboardPage() {
                 <div className="flex justify-center items-center h-40">
                     <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
-             ) : !friendActivity || friendActivity.activity.length === 0 ? (
+             ) : !friendActivity || friendActivity.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                     <p>No friend activity yet.</p>
                     <p className="text-sm">Once your friends watch movies, they'll show up here.</p>
                 </div>
              ) : (
                 <div className="space-y-4">
-                  {friendActivity.activity.map((item) => (
+                  {friendActivity.map((item) => (
                     <div key={`${item.friend.id}-${item.movie.id}`} className="flex items-start gap-4">
                       <Avatar className="h-10 w-10 border">
                          <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
