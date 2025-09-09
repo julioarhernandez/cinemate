@@ -1,10 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, Suspense, useTransition, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useTransition, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -15,10 +14,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Search, Star, Loader2, ListFilter, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { type Movie } from '@/lib/movies';
-import { searchMovies } from '@/ai/flows/search-movies';
-import { useDebounce } from '@/hooks/use-debounce';
-import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, getDocs } from 'firebase/firestore';
@@ -29,7 +24,7 @@ import { genres as allGenres } from '@/lib/movies';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { useMovieSearch } from '@/hooks/use-movie-search';
 
 interface UserMovieData {
   watched?: boolean;
@@ -40,30 +35,26 @@ interface UserMovieData {
 type UserRatings = Record<string, UserMovieData>;
 
 function MoviesPageContent() {
-  const searchParams = useSearchParams();
-  const initialSearch = searchParams.get('search') || '';
-  const initialYear = searchParams.get('year') || '';
-
-
   const [user, authLoading] = useAuthState(auth);
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
 
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  // Filter states
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [year, setYear] = useState(initialYear);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState('popularity.desc');
-
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const { toast } = useToast();
+  const {
+    searchTerm,
+    setSearchTerm,
+    year,
+    setYear,
+    selectedGenres,
+    setSelectedGenres,
+    sortBy,
+    setSortBy,
+    movies,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMoreMovies,
+    handleLinkClick,
+    isInitialized,
+  } = useMovieSearch();
 
   useEffect(() => {
     async function fetchUserRatings() {
@@ -81,97 +72,6 @@ function MoviesPageContent() {
       fetchUserRatings();
     }
   }, [user, authLoading]);
-  
-
-  const runSearch = useCallback(async (searchOptions: {
-      query?: string;
-      year?: string;
-      genres?: string[];
-      sortBy?: string;
-      page: number;
-      append?: boolean;
-    }) => {
-    
-    if (searchOptions.append) {
-        setLoadingMore(true);
-    } else {
-        setLoading(true);
-    }
-
-    try {
-      const result = await searchMovies({
-        query: searchOptions.query,
-        year: searchOptions.year,
-        genres: searchOptions.genres,
-        page: searchOptions.page,
-        sortBy: searchOptions.sortBy,
-      });
-      
-      const moviesWithUserData = result.movies.map(movie => {
-        const userData = userRatings[movie.id.toString()];
-        return {
-          ...movie,
-          watched: userData?.watched === true,
-          userRating: userData?.rating,
-          isPrivate: userData?.isPrivate,
-        };
-      });
-
-      if (searchOptions.append) {
-        setMovies(prev => [...prev, ...moviesWithUserData]);
-      } else {
-        setMovies(moviesWithUserData);
-      }
-      setHasMore(result.hasMore);
-      
-    } catch (error) {
-      console.error('Failed to search for movies:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Search Failed',
-        description: 'Could not fetch movie results. Please try again.',
-      });
-      setMovies([]);
-      setHasMore(false);
-    } finally {
-       if (searchOptions.append) {
-        setLoadingMore(false);
-    } else {
-        setLoading(false);
-    }
-    }
-  }, [toast, userRatings]);
-
-  // Effect to run search when filters change
-  useEffect(() => {
-    setPage(1);
-    startTransition(() => {
-      runSearch({
-        query: debouncedSearchTerm,
-        year: year,
-        genres: selectedGenres,
-        sortBy: sortBy,
-        page: 1,
-        append: false,
-      });
-    });
-  }, [debouncedSearchTerm, year, selectedGenres, sortBy, runSearch]);
-
-  const loadMoreMovies = () => {
-    if (!hasMore || loadingMore) return;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    startTransition(() => {
-      runSearch({
-        query: debouncedSearchTerm,
-        year,
-        genres: selectedGenres,
-        sortBy,
-        page: nextPage,
-        append: true,
-      });
-    });
-  };
 
   const moviesWithUserData = useMemo(() => {
     return movies.map(movie => {
@@ -185,6 +85,8 @@ function MoviesPageContent() {
     });
   }, [movies, userRatings]);
 
+  const showLoadingSpinner = loading && !isInitialized;
+  const showInitialLoad = loading && isInitialized && movies.length === 0;
 
   return (
     <div className="space-y-8">
@@ -206,11 +108,11 @@ function MoviesPageContent() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            {loading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+            {loading && movies.length > 0 && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
+            <Collapsible className="w-full sm:w-auto">
                 <CollapsibleTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <ListFilter className="mr-2 h-4 w-4" />
@@ -266,6 +168,18 @@ function MoviesPageContent() {
         </div>
       </div>
 
+      {showLoadingSpinner && (
+         <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {showInitialLoad && (
+         <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
       {!loading && movies.length === 0 && (
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">No movies found</h3>
@@ -280,7 +194,11 @@ function MoviesPageContent() {
         <>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {moviesWithUserData.map((movie) => (
-            <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
+            <Link
+                href={`/dashboard/movies/${movie.id}`}
+                key={movie.id}
+                onClick={(e) => handleLinkClick(e, `/dashboard/movies/${movie.id}`)}
+              >
                 <Card className="group overflow-hidden h-full">
                 <CardHeader className="p-0">
                     <div className="relative h-60">
@@ -343,7 +261,7 @@ function MoviesPageContent() {
 
 export default function MoviesPage() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
             <MoviesPageContent />
         </Suspense>
     )

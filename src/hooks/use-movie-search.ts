@@ -41,7 +41,6 @@ export function useMovieSearch() {
   const [loadingMore, setLoadingMore] = useState(false);
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const searchStateRef = useRef<MovieSearchState>();
 
   const runSearch = useCallback(async (options: {
     query?: string;
@@ -70,12 +69,14 @@ export function useMovieSearch() {
 
       if (options.append) {
         setMovies(prev => {
-            const combined = [...prev, ...result.movies];
+            const newMovies = result.movies || [];
+            const combined = [...prev, ...newMovies];
+            // Use a Map to efficiently handle deduplication based on movie ID
             const uniqueMovies = Array.from(new Map(combined.map(m => [m.id, m])).values());
             return uniqueMovies;
         });
       } else {
-        setMovies(result.movies);
+        setMovies(result.movies || []);
       }
       setHasMore(result.hasMore);
     } catch (error) {
@@ -103,7 +104,6 @@ export function useMovieSearch() {
     const querySearch = searchParams.get('search');
     const queryYear = searchParams.get('year');
     
-    // Check if we're landing from an external link with search params
     const isNewSearch = querySearch !== null || queryYear !== null;
 
     if (savedStateString && !isNewSearch) {
@@ -116,16 +116,15 @@ export function useMovieSearch() {
             setMovies(savedState.movies || []);
             setPage(savedState.page || 1);
             setHasMore(savedState.hasMore === undefined ? true : savedState.hasMore);
-            setLoading(false); // We have state, so we're not loading initially
             if(savedState.scrollPosition) {
                 setTimeout(() => window.scrollTo(0, savedState.scrollPosition), 0);
             }
         } catch (e) {
             console.error("Failed to parse saved movie search state", e);
+        } finally {
             setLoading(false);
         }
     } else {
-        // This is a new navigation or search, use URL params
         const newSearchTerm = querySearch || '';
         const newYear = queryYear || '';
         setSearchTerm(newSearchTerm);
@@ -147,7 +146,7 @@ export function useMovieSearch() {
         });
     }
     setIsInitialized(true);
-  }, []); // Runs only once on mount
+  }, []);
 
   
   // Effect to save state to sessionStorage whenever it changes
@@ -163,7 +162,6 @@ export function useMovieSearch() {
         hasMore,
         scrollPosition: window.scrollY
     };
-    searchStateRef.current = stateToSave;
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
   }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized]);
   
@@ -171,19 +169,29 @@ export function useMovieSearch() {
   // Effect to run search when filters change, but not on initial load
   useEffect(() => {
     if (!isInitialized) return;
-    const newPage = 1;
-    setPage(newPage);
+    
+    // Create a new URLSearchParams object
+    const params = new URLSearchParams();
+    if (debouncedSearchTerm) params.set('search', debouncedSearchTerm);
+    if (year) params.set('year', year);
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    // Use replaceState to avoid adding to browser history for filter changes
+    window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
+
+    setPage(1);
     startTransition(() => {
         runSearch({
             query: debouncedSearchTerm,
             year: year,
             genres: selectedGenres,
             sortBy: sortBy,
-            page: newPage,
+            page: 1,
             pageSize: 10,
             append: false,
         });
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchTerm, year, selectedGenres, sortBy, isInitialized]);
 
 
@@ -205,7 +213,6 @@ export function useMovieSearch() {
   };
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
     const stateToSave: MovieSearchState = {
         searchTerm,
         year,
