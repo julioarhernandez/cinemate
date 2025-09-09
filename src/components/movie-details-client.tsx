@@ -143,9 +143,11 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   const handlePrivacyChange = async (newPrivateState: boolean) => {
     setIsPrivate(newPrivateState);
-    const success = await handleSave({ isPrivate: newPrivateState, watched: true });
+    // Marking private implies it's watched and removes from watchlist
+    const success = await handleSave({ isPrivate: newPrivateState, watched: true, watchlist: false });
     if (success) {
-        setWatched(true); // Marking private implies it's watched
+        setWatched(true); 
+        setInWatchlist(false);
         toast({
             title: 'Privacy Setting Updated!',
             description: newPrivateState
