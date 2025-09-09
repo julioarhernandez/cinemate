@@ -1,11 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can read/write their own profile and friends list
+    // Users can read/write their own profile
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
+      
       // Allow other authenticated users to read basic profile info for friend features
       allow read: if request.auth != null;
     }
@@ -13,22 +12,6 @@ service cloud.firestore {
     // Allow authenticated users to query users collection for finding friends by email
     match /users/{document=**} {
       allow list: if request.auth != null;
-    }
-    
-    // Rules for friend subcollections
-    match /users/{userId}/friends/{friendId} {
-      // User can read/write/delete their OWN friends list
-      allow read, write, delete: if request.auth.uid == userId;
-
-      // A user can be added to another user's friends list (write)
-      // ONLY IF there is a pending friend request from them.
-      // This is crucial for the "accept request" batch operation to succeed.
-      // Here, {userId} is the person being written to, and {friendId} is the person being added.
-      // The person performing the request is request.auth.uid.
-      allow write: if request.auth != null && exists(/databases/$(database)/documents/friendRequests/{requestId})
-                   && get(/databases/$(database)/documents/friendRequests/{requestId}).data.from == userId
-                   && get(/databases/$(database)/documents/friendRequests/{requestId}).data.to == request.auth.uid
-                   && get(/databases/$(database)/documents/friendRequests/{requestId}).data.status == 'pending';
     }
 
     // Friend requests
@@ -38,19 +21,39 @@ service cloud.firestore {
                      (resource.data.to == request.auth.uid || 
                       resource.data.from == request.auth.uid);
       
-      // Allow users to create requests they are sending
+      // Allow users to create requests they're sending
       allow create: if request.auth != null && 
-                       request.resource.data.from == request.auth.uid;
+                       request.resource.data.from == request.auth.uid &&
+                       request.resource.data.keys().hasAll(["from", "to", "status"]);
       
-      // Allow users to delete requests they sent or received (for cancelling, accepting)
+      // Allow users to delete requests they sent or received
       allow delete: if request.auth != null && 
                        (resource.data.to == request.auth.uid || 
                         resource.data.from == request.auth.uid);
       
-      // Allow a user to update a request to 'declined' if they are the recipient
+      // Allow updating status to 'declined'
       allow update: if request.auth != null && 
                        resource.data.to == request.auth.uid &&
                        request.resource.data.status == 'declined';
+    }
+
+    // Allow querying friend requests collection
+    match /friendRequests/{document=**} {
+      allow list: if request.auth != null;
+    }
+
+    // Friends lists
+    match /users/{userId}/friends/{friendId} {
+      allow read, delete: if request.auth.uid == userId;
+      
+      // Allow a user to write to their own friends list OR
+      // allow them to write to another user's friends list (`userId`) if
+      // they are accepting a friend request from that user.
+      allow write: if request.auth.uid == userId ||
+                      (request.auth.uid == friendId &&
+                       exists(/databases/$(database)/documents/friendRequests/{requestId}) &&
+                       get(/databases/$(database)/documents/friendRequests/{requestId}).data.from == userId &&
+                       get(/databases/$(database)/documents/friendRequests/{requestId}).data.to == friendId);
     }
     
     // Ratings & Watched list
