@@ -54,6 +54,7 @@ const UnknownMovie: MovieDetailsOutput = {
 // Helper function to get fallback movie data
 function getFallbackMovie(id: number): MovieDetailsOutput {
   const fallbackMovie = defaultMovies.find(m => m.id === id);
+  // Ensure the synopsis is always a string.
   return fallbackMovie ? { ...fallbackMovie, synopsis: fallbackMovie.synopsis ?? 'No synopsis available.' } : UnknownMovie;
 }
 
