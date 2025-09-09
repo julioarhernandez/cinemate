@@ -276,6 +276,18 @@ export default function FriendsPage() {
         toast({ variant: 'destructive', title: 'Failed to decline request.' });
      }
   };
+  
+  const handleCancelRequest = async (requestId: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'friendRequests', requestId));
+      toast({ title: 'Request cancelled.' });
+    } catch (error) {
+      console.error("Error cancelling friend request:", error);
+      toast({ variant: 'destructive', title: 'Failed to cancel request.' });
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -405,7 +417,7 @@ export default function FriendsPage() {
                             <CardHeader>
                                 <CardTitle>Sent Requests</CardTitle>
                                 <CardDescription>You've sent these people a friend request.</CardDescription>
-                            </Header>
+                            </CardHeader>
                             <CardContent className="space-y-4">
                                 {sentRequests.map((request) => (
                                 <div key={request.id} className="flex items-center gap-4">
@@ -421,9 +433,10 @@ export default function FriendsPage() {
                                         {request.toEmail}
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                       <Clock className="h-4 w-4" />
-                                       <span>Pending</span>
+                                    <div className="flex items-center gap-2">
+                                       <Button size="icon" variant="outline" className="text-red-500 hover:text-red-500 border-red-500/50 hover:bg-red-500/10" onClick={() => handleCancelRequest(request.id)}>
+                                        <UserX className="h-4 w-4" />
+                                       </Button>
                                     </div>
                                 </div>
                                 ))}
