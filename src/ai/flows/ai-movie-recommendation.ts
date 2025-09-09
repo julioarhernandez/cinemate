@@ -17,24 +17,19 @@ import { z } from 'genkit';
 const RecommendMovieInputSchema = z.object({
   userPreferences: z
     .string()
-    .describe(
-      'A list of movies or genres that the user likes.'
-    ),
+    .describe('A list of movies or genres that the user likes.'),
 });
 export type RecommendMovieInput = z.infer<typeof RecommendMovieInputSchema>;
 
-// Define the output schema
+// Define the output schema for a single recommendation
+const RecommendationSchema = z.object({
+    title: z.string().describe('The title of the recommended movie.'),
+    reasoning: z.string().describe('The reasoning for recommending this specific movie.'),
+});
+
+// Define the final output schema
 const RecommendMovieOutputSchema = z.object({
-  movieRecommendation: z
-    .string()
-    .describe(
-      'A personalized movie recommendation based on the user’s favorite movies and genres.'
-    ),
-  reasoning: z
-    .string()
-    .describe(
-      'The reasoning behind the recommendation, explaining how the input data influenced the choice.'
-    ),
+    recommendations: z.array(RecommendationSchema).describe('A list of at least 3 personalized movie recommendations.'),
 });
 export type RecommendMovieOutput = z.infer<typeof RecommendMovieOutputSchema>;
 
@@ -48,11 +43,14 @@ const recommendMoviePrompt = ai.definePrompt({
   name: 'recommendMoviePrompt',
   input: { schema: RecommendMovieInputSchema },
   output: { schema: RecommendMovieOutputSchema },
-  prompt: `You are a movie recommendation expert. Your task is to recommend a movie to a user based on a list of movies and genres they like.
+  prompt: `You are a movie recommendation expert. Your task is to recommend at least 3 movies to a user based on a list of movies and genres they like.
 
 User's Liked Movies & Genres: {{{userPreferences}}}
 
-Based on this information, recommend a single, specific movie that the user is likely to enjoy. Do not recommend a movie that is already on their list. Explain why you are recommending this movie.`,
+Based on this information, recommend a list of at least 3 specific movies that the user is likely to enjoy. 
+- Do not recommend movies that are already on their list.
+- Provide a unique set of recommendations if asked multiple times with the same input.
+- Explain why you are recommending each movie.`,
 });
 
 // Define the flow

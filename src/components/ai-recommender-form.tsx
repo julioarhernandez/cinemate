@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { MovieSelectionDialog } from './movie-selection-dialog';
@@ -138,12 +138,12 @@ export function AiRecommenderForm() {
 
           </form>
         </Form>
-        <div className="flex items-center justify-center">
+        <div className="flex items-start justify-center">
           {loading && (
-            <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <div className="flex flex-col items-center gap-4 text-muted-foreground pt-12">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
               <p className="font-headline text-lg">
-                Our AI is finding the perfect movie for you...
+                Our AI is finding the perfect movies for you...
               </p>
             </div>
           )}
@@ -151,7 +151,7 @@ export function AiRecommenderForm() {
             <div className="flex h-full w-full flex-col items-center justify-center rounded-lg border-2 border-dashed bg-card p-8 text-center">
               <Bot className="mb-4 h-16 w-16 text-muted-foreground" />
               <h3 className="font-headline text-xl font-semibold">
-                Your Recommendation Awaits
+                Your Recommendations Await
               </h3>
               <p className="mt-2 max-w-sm text-muted-foreground">
                 Enter some movies you like, or select from your collection, and our AI will suggest something new.
@@ -165,15 +165,20 @@ export function AiRecommenderForm() {
                   <Sparkles className="h-6 w-6 text-accent" />
                   We Recommend
                 </CardTitle>
+                <CardDescription>Here are a few movies you might enjoy.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <h3 className="text-3xl font-bold text-primary">
-                  {result.movieRecommendation}
-                </h3>
-                <div>
-                  <h4 className="font-headline font-semibold">Why you'll like it:</h4>
-                  <p className="mt-1 text-muted-foreground">{result.reasoning}</p>
-                </div>
+                {result.recommendations.map((rec, index) => (
+                    <div key={index} className="space-y-2 border-b pb-4 last:border-b-0 last:pb-0">
+                        <h3 className="text-xl font-bold text-primary">
+                        {rec.title}
+                        </h3>
+                        <div>
+                        <h4 className="font-headline text-sm font-semibold">Why you might like it:</h4>
+                        <p className="mt-1 text-sm text-muted-foreground">{rec.reasoning}</p>
+                        </div>
+                    </div>
+                ))}
               </CardContent>
             </Card>
           )}
