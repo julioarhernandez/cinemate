@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { EyeOff, Star } from 'lucide-react';
+import { EyeOff, Star, Bookmark } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -53,11 +53,12 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   const [watched, setWatched] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [userRating, setUserRating] = useState(0);
+  const [inWatchlist, setInWatchlist] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    async function fetchUserRating() {
+    async function fetchUserData() {
       if (user) {
         const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
         const ratingDoc = await getDoc(ratingDocRef);
@@ -67,17 +68,18 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
           setUserRating(data.rating || 0);
           setWatched(data.watched === true);
           setIsPrivate(data.isPrivate === true);
+          setInWatchlist(data.watchlist === true);
         }
       }
       setIsDataLoaded(true);
     }
     
     if (!authLoading) {
-      fetchUserRating();
+      fetchUserData();
     }
   }, [movieId, user, authLoading]);
 
-  const handleSave = async (dataToSave: { rating?: number; watched?: boolean; isPrivate?: boolean }) => {
+  const handleSave = async (dataToSave: { rating?: number; watched?: boolean; isPrivate?: boolean, watchlist?: boolean }) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -105,9 +107,11 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   
   const handleSaveRating = async () => {
     if (userRating === 0) return;
-    const success = await handleSave({ rating: userRating, watched: true });
+    // Saving a rating implies it's watched and removes it from the watchlist
+    const success = await handleSave({ rating: userRating, watched: true, watchlist: false });
     if (success) {
       setWatched(true);
+      setInWatchlist(false);
       toast({
         title: 'Rating Saved!',
         description: `You rated ${movieDetails.title} ${userRating.toFixed(0)} stars.`,
@@ -117,12 +121,16 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   const handleWatchedChange = async (newWatchedState: boolean) => {
     setWatched(newWatchedState);
-    const dataToSave: { watched: boolean; rating?: number, isPrivate?: boolean } = { watched: newWatchedState };
+    const dataToSave: { watched: boolean; rating?: number, isPrivate?: boolean, watchlist?: boolean } = { watched: newWatchedState };
     if (!newWatchedState) {
         dataToSave.rating = 0; // Reset rating if marked as unwatched
         dataToSave.isPrivate = false; // Reset privacy if unwatched
         setUserRating(0);
         setIsPrivate(false);
+    } else {
+        // If marking as watched, remove from watchlist
+        dataToSave.watchlist = false;
+        setInWatchlist(false);
     }
     const success = await handleSave(dataToSave);
      if (success) {
@@ -143,6 +151,26 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
             description: newPrivateState
             ? `"${movieDetails.title}" is now private.`
             : `"${movieDetails.title}" is now public.`,
+        });
+    }
+  };
+
+  const handleWatchlistToggle = async () => {
+    const newWatchlistState = !inWatchlist;
+    // Cannot be in watchlist if already watched
+    if (watched) {
+         toast({
+            variant: 'destructive',
+            title: 'Already Watched',
+            description: 'You cannot add a watched movie to your watchlist.',
+        });
+        return;
+    }
+    setInWatchlist(newWatchlistState);
+    const success = await handleSave({ watchlist: newWatchlistState });
+    if (success) {
+        toast({
+            title: `"${movieDetails.title}" ${newWatchlistState ? 'added to' : 'removed from'} your watchlist.`,
         });
     }
   };
@@ -182,6 +210,15 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
                 </div>
             )}
         </div>
+
+        <Button
+            onClick={handleWatchlistToggle}
+            variant={inWatchlist ? "secondary" : "outline"}
+            disabled={watched}
+        >
+            <Bookmark className={`mr-2 h-4 w-4 ${inWatchlist ? "fill-primary" : ""}`} />
+            {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+        </Button>
 
 
       {watched && (

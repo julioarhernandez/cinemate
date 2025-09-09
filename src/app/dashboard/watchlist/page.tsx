@@ -1,0 +1,160 @@
+
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Search, Star, Loader2, Bookmark } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { auth, db } from '@/lib/firebase';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
+import { Button } from '@/components/ui/button';
+
+export default function WatchlistPage() {
+  const [user, authLoading] = useAuthState(auth);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [movies, setMovies] = useState<MovieDetailsOutput[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const { toast } = useToast();
+
+  const fetchWatchlist = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+        const ratingsCollection = collection(db, 'users', user.uid, 'ratings');
+        const q = query(ratingsCollection, where('watchlist', '==', true));
+        const snapshot = await getDocs(q);
+        
+        const movieIds: number[] = [];
+        snapshot.forEach((doc) => {
+            movieIds.push(parseInt(doc.id));
+        });
+        
+        const moviePromises = movieIds.map(id => getMovieDetails({ id }));
+        const moviesData = await Promise.all(moviePromises);
+        
+        const fetchedMovies = moviesData
+          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Movie' && !!m.id && m.id !== 0);
+
+        setMovies(fetchedMovies);
+
+    } catch (error) {
+      console.error('Failed to fetch watchlist:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Fetch Failed',
+        description: 'Could not fetch your movie watchlist. Please try again.',
+      });
+      setMovies([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, toast]);
+
+
+  useEffect(() => {
+    if (!authLoading) {
+        fetchWatchlist();
+    }
+  }, [authLoading, fetchWatchlist]);
+
+
+  const filteredMovies = movies.filter(movie =>
+    movie.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (authLoading) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="font-headline text-3xl font-bold tracking-tight">
+          My Watchlist
+        </h1>
+        <p className="text-muted-foreground">
+          Movies you want to watch later.
+        </p>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search your watchlist..."
+          className="pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      
+      {loading && (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      )}
+
+      {!loading && filteredMovies.length === 0 && (
+         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
+            <h3 className="text-xl font-bold tracking-tight">Your watchlist is empty</h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Browse movies and add them to your watchlist to see them here.
+            </p>
+            <Button asChild className="mt-4">
+              <Link href="/dashboard/movies">Browse Movies</Link>
+            </Button>
+          </div>
+      )}
+
+      {!loading && filteredMovies.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {filteredMovies.map((movie) => (
+            <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
+                <Card className="group overflow-hidden h-full">
+                <CardHeader className="p-0">
+                    <div className="relative h-60 overflow-hidden">
+                    <Image
+                        src={movie.imageUrl}
+                        alt={movie.title}
+                        data-ai-hint={movie.imageHint}
+                        width={400}
+                        height={600}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                     <Badge variant="secondary" className="absolute top-2 right-2 flex items-center gap-1">
+                        <Bookmark className="h-3 w-3" /> Watchlist
+                    </Badge>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                    <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{movie.year}</p>
+                </CardContent>
+                <CardFooter className="p-3 pt-0">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Star className="h-4 w-4 text-amber-400" /> 
+                        <span>{movie.rating.toFixed(1)}</span>
+                    </div>
+                </CardFooter>
+                </Card>
+            </Link>
+            ))}
+        </div>
+      )}
+
+    </div>
+  );
+}
