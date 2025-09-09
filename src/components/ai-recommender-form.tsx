@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, Suspense } from 'react';
+import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -40,7 +40,11 @@ const formSchema = z.object({
     ),
 });
 
-export function AiRecommenderForm() {
+interface AiRecommenderFormProps {
+  onNewRecommendation: () => void;
+}
+
+export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProps) {
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -76,6 +80,8 @@ export function AiRecommenderForm() {
         recommendations: recommendation.recommendations,
         createdAt: serverTimestamp(),
       });
+      
+      onNewRecommendation();
 
     } catch (error) {
       console.error(error);
@@ -173,7 +179,7 @@ export function AiRecommenderForm() {
                 Your Recommendations Await
               </h3>
               <p className="mt-2 max-w-sm text-muted-foreground">
-                Enter some movies you like, or select from your collection, and our AI will suggest something new.
+                Enter some movies you like, and our AI will suggest something new. Results will appear here.
               </p>
             </div>
           )}
@@ -184,7 +190,7 @@ export function AiRecommenderForm() {
                   <Sparkles className="h-6 w-6 text-accent" />
                   We Recommend
                 </CardTitle>
-                <CardDescription>Here are a few movies you might enjoy.</CardDescription>
+                <CardDescription>Here are a few movies you might enjoy. This has been added to your history below.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {result.recommendations.map((rec, index) => (
