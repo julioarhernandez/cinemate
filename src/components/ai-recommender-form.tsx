@@ -26,8 +26,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { MovieSelectionDialog } from './movie-selection-dialog';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 
 const formSchema = z.object({
@@ -54,11 +55,28 @@ export function AiRecommenderForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Not signed in',
+            description: 'You need to be signed in to get recommendations.',
+        });
+        return;
+    }
     setLoading(true);
     setResult(null);
     try {
       const recommendation = await recommendMovie(values);
       setResult(recommendation);
+
+      // Save the recommendation to Firestore
+      const recommendationsCollection = collection(db, 'users', user.uid, 'recommendations');
+      await addDoc(recommendationsCollection, {
+        preferences: values.userPreferences,
+        recommendations: recommendation.recommendations,
+        createdAt: serverTimestamp(),
+      });
+
     } catch (error) {
       console.error(error);
       toast({
