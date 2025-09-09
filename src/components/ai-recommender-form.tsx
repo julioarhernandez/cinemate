@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Bot, Loader2, Sparkles, Library } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import Link from 'next/link';
 
 import {
   recommendMovie,
@@ -170,9 +171,11 @@ export function AiRecommenderForm() {
               <CardContent className="space-y-4">
                 {result.recommendations.map((rec, index) => (
                     <div key={index} className="space-y-2 border-b pb-4 last:border-b-0 last:pb-0">
-                        <h3 className="text-xl font-bold text-primary">
-                        {rec.title}
-                        </h3>
+                        <Link href={`/dashboard/movies/${rec.id}`}>
+                           <h3 className="text-xl font-bold text-primary hover:underline">
+                            {rec.title} ({rec.year})
+                           </h3>
+                        </Link>
                         <div>
                         <h4 className="font-headline text-sm font-semibold">Why you might like it:</h4>
                         <p className="mt-1 text-sm text-muted-foreground">{rec.reasoning}</p>
