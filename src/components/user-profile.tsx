@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from './ui/skeleton';
 
 export function UserProfile() {
   const [user, loading] = useAuthState(auth);
@@ -23,11 +25,7 @@ export function UserProfile() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    );
+    return <Skeleton className="h-8 w-8 rounded-full" />;
   }
 
   if (!user) {
