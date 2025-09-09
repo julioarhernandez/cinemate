@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const [user] = useAuthState(auth);
   const [watchedCount, setWatchedCount] = useState<number | null>(null);
   const [friendCount, setFriendCount] = useState<number | null>(null);
+  const [recommendationCount, setRecommendationCount] = useState<number | null>(null);
   const [friendActivity, setFriendActivity] = useState<FriendActivityItem[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
 
@@ -59,13 +60,24 @@ export default function DashboardPage() {
       const getFriendCount = async () => {
         try {
           const friendsCol = collection(db, 'users', user.uid, 'friends');
-          const snapshot = await getDocs(friendsCol);
-          setFriendCount(snapshot.size);
+          const snapshot = await getCountFromServer(friendsCol);
+          setFriendCount(snapshot.data().count);
         } catch (error) {
           console.error("Error fetching friend count: ", error);
           setFriendCount(0);
         }
       }
+      
+      const getRecommendationCount = async () => {
+        try {
+            const recommendationsCol = collection(db, 'users', user.uid, 'recommendations');
+            const snapshot = await getCountFromServer(recommendationsCol);
+            setRecommendationCount(snapshot.data().count);
+        } catch (error) {
+            console.error("Error fetching recommendation count: ", error);
+            setRecommendationCount(0);
+        }
+      };
 
       const fetchFriendActivity = async () => {
         setLoadingActivity(true);
@@ -152,10 +164,12 @@ export default function DashboardPage() {
 
       getWatchedCount();
       getFriendCount();
+      getRecommendationCount();
       fetchFriendActivity();
     } else {
       setWatchedCount(0);
       setFriendCount(0);
+      setRecommendationCount(0);
       setLoadingActivity(false);
     }
   }, [user]);
@@ -175,7 +189,7 @@ export default function DashboardPage() {
     },
     {
       title: 'AI Recommendations',
-      value: '5', // This can be made dynamic later
+      value: recommendationCount,
       icon: Sparkles,
       color: 'text-violet-500',
     },
