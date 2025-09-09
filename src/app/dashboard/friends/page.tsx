@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -238,50 +237,34 @@ export default function FriendsPage() {
 
   const handleAcceptRequest = async (request: IncomingRequest) => {
     if (!user) return;
-    
-    // DEBUGGING: Broke down the batch write to identify the failing operation.
-    const currentUserFriendRef = doc(db, 'users', user.uid, 'friends', request.from);
-    const otherUserFriendRef = doc(db, 'users', request.from, 'friends', user.uid);
-    const requestRef = doc(db, 'friendRequests', request.id);
-
     try {
-      // Step 1: Add the other user to the current user's friends list
-      try {
-        await setDoc(currentUserFriendRef, {
-          displayName: request.fromName,
-          email: request.fromEmail,
-          photoURL: request.fromPhotoURL || '',
-        });
-      } catch (e) {
-        console.error("DEBUG: Failed at Step 1 - Adding to current user's friends list.", e);
-        throw e; // Re-throw to be caught by the outer catch block
-      }
-      
-      // Step 2: Add the current user to the other user's friends list
-      try {
-        await setDoc(otherUserFriendRef, {
-          displayName: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL || '',
-        });
-      } catch (e) {
-        console.error("DEBUG: Failed at Step 2 - Adding to other user's friends list.", e);
-        throw e;
-      }
-      
-      // Step 3: Delete the friend request
-      try {
-        await deleteDoc(requestRef);
-      } catch (e) {
-        console.error("DEBUG: Failed at Step 3 - Deleting the friend request.", e);
-        throw e;
-      }
+      const batch = writeBatch(db);
 
+      // Add to each other's friends list
+      const currentUserFriendRef = doc(db, 'users', user.uid, 'friends', request.from);
+      batch.set(currentUserFriendRef, {
+        displayName: request.fromName,
+        email: request.fromEmail,
+        photoURL: request.fromPhotoURL || '',
+      });
+
+      const otherUserFriendRef = doc(db, 'users', request.from, 'friends', user.uid);
+      batch.set(otherUserFriendRef, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL || '',
+      });
+      
+      // Delete the friend request
+      const requestRef = doc(db, 'friendRequests', request.id);
+      batch.delete(requestRef);
+      
+      await batch.commit();
       toast({ title: 'Friend added!' });
 
     } catch (error) {
       console.error("Error accepting friend request:", error);
-      toast({ variant: 'destructive', title: 'Failed to add friend.', description: 'Check the console for error details.' });
+      toast({ variant: 'destructive', title: 'Failed to add friend.' });
     }
   };
   
