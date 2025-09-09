@@ -167,7 +167,8 @@ export default function WatchlistPage() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {filteredMovies.map((movie) => (
                 <Card key={movie.id} className="group overflow-hidden h-full flex flex-col">
-                    <Link href={`/dashboard/movies/${movie.id}`} className="block h-full">
+                    <div className="relative">
+                      <Link href={`/dashboard/movies/${movie.id}`} className="block">
                         <CardHeader className="p-0">
                             <div className="relative h-60 overflow-hidden">
                             <Image
@@ -179,39 +180,40 @@ export default function WatchlistPage() {
                                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <div
-                                        className="absolute top-2 right-2"
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                    >
-                                        <Badge 
-                                            variant="secondary" 
-                                            className="flex items-center gap-1 cursor-pointer hover:bg-destructive/80 hover:text-destructive-foreground"
-                                        >
-                                            <Bookmark className="h-3 w-3" /> Watchlist
-                                        </Badge>
-                                    </div>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Remove from Watchlist?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                    Are you sure you want to remove "{movie.title}" from your watchlist?
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleRemoveFromWatchlist(movie.id)} className="bg-destructive hover:bg-destructive/90">
-                                       <Trash2 className="mr-2 h-4 w-4"/> Remove
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-
                             </div>
                         </CardHeader>
+                      </Link>
+                      <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                              <div
+                                  className="absolute top-2 right-2"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              >
+                                  <Badge 
+                                      variant="secondary" 
+                                      className="flex items-center gap-1 cursor-pointer hover:bg-destructive/80 hover:text-destructive-foreground"
+                                  >
+                                      <Bookmark className="h-3 w-3" /> Watchlist
+                                  </Badge>
+                              </div>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle>Remove from Watchlist?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                              Are you sure you want to remove "{movie.title}" from your watchlist?
+                              </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleRemoveFromWatchlist(movie.id)} className="bg-destructive hover:bg-destructive/90">
+                                 <Trash2 className="mr-2 h-4 w-4"/> Remove
+                              </AlertDialogAction>
+                          </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                    <Link href={`/dashboard/movies/${movie.id}`} className="block h-full">
                         <div className="flex flex-col flex-grow p-3">
                             <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
                             <p className="text-sm text-muted-foreground">{movie.year}</p>
