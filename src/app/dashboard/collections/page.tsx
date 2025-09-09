@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2, ListFilter } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 interface UserMovieData {
   watched?: boolean;
   rating?: number;
+  isPrivate?: boolean;
 }
 
 type UserRatings = Record<string, UserMovieData>;
@@ -121,6 +122,7 @@ export default function CollectionsPage() {
             ...movie,
             watched: true, // All movies in collection are watched
             userRating: userData?.rating,
+            isPrivate: userData?.isPrivate,
         };
     });
 
@@ -308,7 +310,13 @@ export default function CollectionsPage() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                         <Badge variant="secondary" className="absolute bottom-2 left-2">{movie.genre}</Badge>
-                        <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
+                        {movie.isPrivate ? (
+                            <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1">
+                                <EyeOff className="h-3 w-3"/> Private
+                            </Badge>
+                        ) : (
+                            <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
+                        )}
                         </div>
                     </CardHeader>
                     <CardContent className="p-3">

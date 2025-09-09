@@ -2,14 +2,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
+import { EyeOff, Star } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { Skeleton } from './ui/skeleton';
 
@@ -51,6 +51,7 @@ const StarRatingInput = ({
 export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: MovieDetailsOutput, movieId: number }) {
   const [user, authLoading] = useAuthState(auth);
   const [watched, setWatched] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const { toast } = useToast();
@@ -65,6 +66,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
           const data = ratingDoc.data();
           setUserRating(data.rating || 0);
           setWatched(data.watched === true);
+          setIsPrivate(data.isPrivate === true);
         }
       }
       setIsDataLoaded(true);
@@ -75,7 +77,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     }
   }, [movieId, user, authLoading]);
 
-  const handleSave = async (dataToSave: { rating?: number; watched?: boolean }) => {
+  const handleSave = async (dataToSave: { rating?: number; watched?: boolean; isPrivate?: boolean }) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -86,7 +88,9 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     }
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
-      await setDoc(ratingDocRef, dataToSave, { merge: true });
+      // Add updatedAt timestamp to ensure the document is updated
+      const dataWithTimestamp = { ...dataToSave, updatedAt: serverTimestamp() };
+      await setDoc(ratingDocRef, dataWithTimestamp, { merge: true });
       return true;
     } catch (error) {
       console.error('Failed to save data:', error);
@@ -113,10 +117,12 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   const handleWatchedChange = async (newWatchedState: boolean) => {
     setWatched(newWatchedState);
-    const dataToSave: { watched: boolean; rating?: number } = { watched: newWatchedState };
+    const dataToSave: { watched: boolean; rating?: number, isPrivate?: boolean } = { watched: newWatchedState };
     if (!newWatchedState) {
         dataToSave.rating = 0; // Reset rating if marked as unwatched
+        dataToSave.isPrivate = false; // Reset privacy if unwatched
         setUserRating(0);
+        setIsPrivate(false);
     }
     const success = await handleSave(dataToSave);
      if (success) {
@@ -127,9 +133,24 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     }
   };
 
+  const handlePrivacyChange = async (newPrivateState: boolean) => {
+    setIsPrivate(newPrivateState);
+    const success = await handleSave({ isPrivate: newPrivateState, watched: true });
+    if (success) {
+        setWatched(true); // Marking private implies it's watched
+        toast({
+            title: 'Privacy Setting Updated!',
+            description: newPrivateState
+            ? `"${movieDetails.title}" is now private.`
+            : `"${movieDetails.title}" is now public.`,
+        });
+    }
+  };
+
+
   if (authLoading || !isDataLoaded) {
     return <div className="space-y-6 pt-4">
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-4">
           <Skeleton className="h-6 w-12 rounded-full" />
           <Skeleton className="h-6 w-32 rounded-md" />
       </div>
@@ -145,21 +166,34 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   return (
     <div className="pt-6 border-t mt-6 space-y-6">
-      <div className="flex items-center space-x-2">
-        <Switch id="watched-toggle" checked={watched} onCheckedChange={handleWatchedChange} />
-        <Label htmlFor="watched-toggle" className="text-lg">
-          Mark as Watched
-        </Label>
-      </div>
-
-      <div>
-        <Label className="text-lg">Your Rating</Label>
-        <div className="flex flex-col items-start gap-4 mt-2 sm:flex-row sm:items-center">
-          <StarRatingInput rating={userRating} setRating={setUserRating} />
-          <Button onClick={handleSaveRating} disabled={userRating === 0}>Save Rating</Button>
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+            <div className="flex items-center space-x-2">
+                <Switch id="watched-toggle" checked={watched} onCheckedChange={handleWatchedChange} />
+                <Label htmlFor="watched-toggle" className="text-lg">
+                Watched
+                </Label>
+            </div>
+            {watched && (
+                <div className="flex items-center space-x-2 animate-in fade-in-50">
+                    <Switch id="private-toggle" checked={isPrivate} onCheckedChange={handlePrivacyChange} />
+                    <Label htmlFor="private-toggle" className="text-lg flex items-center gap-2">
+                        <EyeOff className="h-4 w-4"/> Make Private
+                    </Label>
+                </div>
+            )}
         </div>
-        <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(0)} out of 10 stars.` : 'Select a rating to save.'}</p>
-      </div>
+
+
+      {watched && (
+        <div className="animate-in fade-in-50">
+          <Label className="text-lg">Your Rating</Label>
+          <div className="flex flex-col items-start gap-4 mt-2 sm:flex-row sm:items-center">
+            <StarRatingInput rating={userRating} setRating={setUserRating} />
+            <Button onClick={handleSaveRating} disabled={userRating === 0}>Save Rating</Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(0)} out of 10 stars.` : 'Select a rating to save.'}</p>
+        </div>
+      )}
     </div>
   );
 }

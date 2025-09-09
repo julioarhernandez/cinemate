@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2, ListFilter, X } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, X, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { type Movie } from '@/lib/movies';
 import { searchMovies } from '@/ai/flows/search-movies';
@@ -35,6 +35,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface UserMovieData {
   watched?: boolean;
   rating?: number;
+  isPrivate?: boolean;
 }
 
 type UserRatings = Record<string, UserMovieData>;
@@ -136,6 +137,7 @@ function MoviesPageContent() {
             ...movie,
             watched: userData?.watched === true,
             userRating: userData?.rating,
+            isPrivate: userData?.isPrivate,
         };
     });
 
@@ -324,7 +326,15 @@ function MoviesPageContent() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <Badge variant="secondary" className="absolute bottom-2 left-2">{movie.genre}</Badge>
-                    {movie.watched && <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>}
+                    {movie.watched && (
+                        movie.isPrivate ? (
+                            <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1">
+                                <EyeOff className="h-3 w-3"/> Private
+                            </Badge>
+                        ) : (
+                            <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
+                        )
+                    )}
                     </div>
                 </CardHeader>
                 <CardContent className="p-3">
