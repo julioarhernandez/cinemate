@@ -1,10 +1,10 @@
-
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
 import { Badge } from '@/components/ui/badge';
 import { MovieDetailsClient } from '@/components/movie-details-client';
 import { Star } from 'lucide-react';
+import { BackButton } from '@/components/back-button';
 
 export default async function MovieDetailsPage({
   params,
@@ -23,7 +23,8 @@ export default async function MovieDetailsPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
+      <BackButton />
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
         <div className="md:col-span-1">
           <Image
