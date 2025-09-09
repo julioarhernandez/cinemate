@@ -299,7 +299,7 @@ export default function CollectionsPage() {
                 <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
                     <Card className="group overflow-hidden h-full">
                     <CardHeader className="p-0">
-                        <div className="relative h-60">
+                        <div className="relative h-60 overflow-hidden">
                         <Image
                             src={movie.imageUrl}
                             alt={movie.title}
