@@ -21,6 +21,7 @@ export type MovieDetailsInput = z.infer<typeof MovieDetailsInputSchema>;
 
 // Define the output schema
 const MovieDetailsOutputSchema = z.object({
+  id: z.number(),
   title: z.string(),
   synopsis: z
     .string()
@@ -42,6 +43,7 @@ const MovieDetailsOutputSchema = z.object({
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
 const UnknownMovie: MovieDetailsOutput = {
+    id: 0,
     title: 'Unknown Movie',
     synopsis: 'Details for this movie could not be found.',
     genre: 'N/A',
@@ -55,7 +57,7 @@ const UnknownMovie: MovieDetailsOutput = {
 function getFallbackMovie(id: number): MovieDetailsOutput {
   const fallbackMovie = defaultMovies.find(m => m.id === id);
   // Ensure the synopsis is always a string.
-  return fallbackMovie ? { ...fallbackMovie, synopsis: fallbackMovie.synopsis ?? 'No synopsis available.' } : UnknownMovie;
+  return fallbackMovie ? { ...fallbackMovie, synopsis: fallbackMovie.synopsis ?? 'No synopsis available.' } : { ...UnknownMovie, id };
 }
 
 // Main function to get movie details
@@ -90,6 +92,7 @@ export async function getMovieDetails(
 
     // 3. Format and return the movie details
     return {
+      id: movie.id,
       title: movie.title || 'Untitled',
       synopsis: movie.overview || 'No synopsis available.',
       genre: movie.genres && movie.genres.length > 0 

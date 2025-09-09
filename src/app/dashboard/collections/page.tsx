@@ -26,7 +26,7 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { genres as allGenres } from '@/lib/movies';
-import { getMovieDetails } from '@/ai/flows/get-movie-details';
+import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 
 interface UserMovieData {
   watched?: boolean;
@@ -38,7 +38,7 @@ type UserRatings = Record<string, UserMovieData>;
 export default function CollectionsPage() {
   const [user, authLoading] = useAuthState(auth);
   const [searchTerm, setSearchTerm] = useState('');
-  const [movies, setMovies] = useState<Movie[]>([]);
+  const [movies, setMovies] = useState<MovieDetailsOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
 
@@ -82,14 +82,9 @@ export default function CollectionsPage() {
         
         const moviePromises = movieIds.map(id => getMovieDetails({ id }));
         const moviesData = await Promise.all(moviePromises);
-
+        
         const fetchedMovies = moviesData
-          .filter((m): m is Movie => !!m && m.title !== 'Unknown Movie') // Ensure movie is not null/undefined
-          .map(m => ({
-            ...m,
-            genre: m.genre || 'Unknown',
-            synopsis: m.synopsis || 'No synopsis available.',
-          }));
+          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Movie');
 
         setMovies(fetchedMovies);
 
