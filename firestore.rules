@@ -1,66 +1,54 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can read and write their own user document.
-    // Other authenticated users can read it (for searching/displaying friend info).
+    // Users can read/write their own profile and list other users
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow get: if request.auth != null;
     }
-
-    // Authenticated users can list users (needed for email search).
     match /users/{document=**} {
       allow list: if request.auth != null;
     }
 
-    // Rules for creating, reading, and deleting friend requests.
+    // Rules for the friendRequests collection
     match /friendRequests/{requestId} {
-      // Users can read requests they sent or received.
+      // Allow users to read requests they sent or received.
       allow read: if request.auth != null && 
                      (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
       
-      // Users can create requests they are sending.
+      // Allow users to create requests if they are the sender.
       allow create: if request.auth != null && 
                        request.resource.data.from == request.auth.uid;
       
-      // Users can delete requests they sent (cancel) or received (accept/decline).
+      // Allow users to delete requests they sent (cancel) or received (part of accept).
       allow delete: if request.auth != null && 
                        (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
       
       // Allow a user to update a request to 'declined' if they are the recipient.
-      allow update: if request.auth != null && 
+      allow update: if request.auth != null &&
                        resource.data.to == request.auth.uid &&
                        request.resource.data.status == 'declined';
     }
 
-    // Rules for a user's friends subcollection.
+    // Rules for the 'friends' subcollection within each user document
     match /users/{userId}/friends/{friendId} {
-      // Allow read access if the user is reading their own friends list, 
-      // OR if the requesting user is already a friend.
+      // Allow a user to read their own friends list, or allow friends to read each other's basic info.
       allow read: if request.auth.uid == userId ||
                    exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
 
-      // Allow write access (adding a friend) if:
-      // 1. The user is modifying their own friends list.
-      // 2. The user is being added to the list, AND a pending friend request exists from them to the list owner.
-      // This is the key rule that allows the batch write to succeed.
-      allow write: if request.auth.uid == userId ||
-                    (request.auth.uid == friendId &&
-                     exists(/databases/$(database)/documents/friendRequests/{requestId}) &&
-                     get(/databases/$(database)/documents/friendRequests/$(requestId)).data.from == friendId &&
-                     get(/databases/$(database)/documents/friendRequests/$(requestId)).data.to == userId);
-
-      // Only allow a user to delete from their own friends list.
-      allow delete: if request.auth.uid == userId;
+      // Allow a user to write/delete their own friends list.
+      // Also, allow a user to be added to another's friends list (write)
+      // IF a pending friend request from the logged-in user exists.
+      allow write, delete: if request.auth.uid == userId ||
+                      (get(/databases/$(database)/documents/friendRequests/$(request.auth.uid + '_' + friendId)).data.status == 'pending' &&
+                       get(/databases/$(database)/documents/friendRequests/$(request.auth.uid + '_' + friendId)).data.to == friendId);
     }
     
     // Ratings & Watched list
     match /users/{userId}/ratings/{ratingId} {
-      // User can manage their own ratings.
+      // Allow user to manage their own ratings
       allow read, write: if request.auth.uid == userId;
       
-      // Friends can read each other's ratings.
+      // Allow friends to read ratings for social features
       allow read: if request.auth != null && 
                      exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
     }
