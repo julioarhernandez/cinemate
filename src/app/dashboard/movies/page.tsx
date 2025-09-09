@@ -60,7 +60,7 @@ function MoviesPageContent() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [year, setYear] = useState(initialYear);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState('primary_release_date.desc');
+  const [sortBy, setSortBy] = useState('popularity.desc');
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const { toast } = useToast();
@@ -257,9 +257,9 @@ function MoviesPageContent() {
                     <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
+                    <SelectItem value="popularity.desc">Popularity</SelectItem>
                     <SelectItem value="primary_release_date.desc">Newest First</SelectItem>
                     <SelectItem value="primary_release_date.asc">Oldest First</SelectItem>
-                    <SelectItem value="popularity.desc">Popularity</SelectItem>
                     <SelectItem value="vote_average.desc">Rating</SelectItem>
                 </SelectContent>
             </Select>
