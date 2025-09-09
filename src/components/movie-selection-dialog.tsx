@@ -22,6 +22,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
+import { cn } from '@/lib/utils';
 
 interface MovieSelectionDialogProps {
   open: boolean;
@@ -146,28 +147,44 @@ export function MovieSelectionDialog({
         ) : (
           <ScrollArea className="h-96">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pr-4">
-              {filteredMovies.map((movie) => (
-                <div key={movie.id} className="relative group cursor-pointer" onClick={() => handleSelect(movie)}>
-                  <div className="absolute top-2 left-2 z-10">
-                     <Checkbox
-                        checked={!!selectedMovies[movie.id]}
-                        onCheckedChange={() => handleSelect(movie)}
-                        className="bg-background/80 group-hover:bg-background"
+              {filteredMovies.map((movie) => {
+                const isSelected = !!selectedMovies[movie.id];
+                return (
+                  <div 
+                    key={movie.id} 
+                    className="relative group cursor-pointer" 
+                    onClick={() => handleSelect(movie)}
+                  >
+                    <div className="absolute top-2 left-2 z-10">
+                       <Checkbox
+                          checked={isSelected}
+                          className="bg-background/80 group-hover:bg-background"
+                        />
+                    </div>
+                    <div 
+                        className={cn(
+                            "overflow-hidden rounded-md border-2",
+                             isSelected ? "border-primary" : "border-transparent"
+                        )}
+                    >
+                      <Image
+                        src={movie.imageUrl}
+                        alt={movie.title}
+                        width={200}
+                        height={300}
+                        className="object-cover w-full h-auto aspect-[2/3] transition-transform duration-300 group-hover:scale-105"
                       />
+                       <div 
+                          className={cn(
+                            "absolute inset-0 bg-gradient-to-t from-black/80 to-transparent",
+                            isSelected && "ring-2 ring-inset ring-primary"
+                          )}
+                       />
+                       <p className="absolute bottom-2 left-2 right-2 text-xs font-bold text-white truncate">{movie.title}</p>
+                    </div>
                   </div>
-                  <div className="overflow-hidden rounded-md border-2 border-transparent group-hover:border-primary" data-state={!!selectedMovies[movie.id] ? 'checked' : 'unchecked'}>
-                    <Image
-                      src={movie.imageUrl}
-                      alt={movie.title}
-                      width={200}
-                      height={300}
-                      className="object-cover w-full h-auto aspect-[2/3] transition-transform duration-300 group-hover:scale-105"
-                    />
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" data-state={!!selectedMovies[movie.id] ? 'checked' : 'unchecked'}/>
-                     <p className="absolute bottom-2 left-2 right-2 text-xs font-bold text-white truncate">{movie.title}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         )}
