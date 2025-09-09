@@ -29,16 +29,25 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserPlus, UserCheck, UserX, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { UserPlus, UserCheck, UserX, Loader2, Clock } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
-interface FriendRequest {
+interface IncomingRequest {
   id: string;
   from: string;
   fromName: string;
   fromEmail: string;
   fromPhotoURL?: string;
   status: 'pending';
+}
+
+interface SentRequest {
+  id: string;
+  to: string;
+  toName: string;
+  toEmail: string;
+  toPhotoURL?: string;
 }
 
 interface Friend {
@@ -58,7 +67,8 @@ export default function FriendsPage() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(true);
 
-  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>([]);
+  const [sentRequests, setSentRequests] = useState<SentRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
   // Send friend request
@@ -85,6 +95,7 @@ export default function FriendsPage() {
       }
       
       const foundUserDoc = querySnapshot.docs[0];
+      const foundUserData = foundUserDoc.data();
       const foundUserId = foundUserDoc.id;
 
       // 2. Check if already friends
@@ -96,7 +107,7 @@ export default function FriendsPage() {
         return;
       }
 
-      // 3. Check if a request already exists
+      // 3. Check if a request already exists (either way)
       const requestsRef = collection(db, 'friendRequests');
       const sentRequestQuery = query(requestsRef, where('from', '==', user.uid), where('to', '==', foundUserId));
       const receivedRequestQuery = query(requestsRef, where('from', '==', foundUserId), where('to', '==', user.uid));
@@ -119,6 +130,9 @@ export default function FriendsPage() {
         fromEmail: user.email,
         fromPhotoURL: user.photoURL,
         to: foundUserId,
+        toName: foundUserData.displayName,
+        toEmail: foundUserData.email,
+        toPhotoURL: foundUserData.photoURL,
         status: 'pending',
         createdAt: serverTimestamp(),
       });
@@ -142,7 +156,7 @@ export default function FriendsPage() {
     const q = query(requestsRef, where('to', '==', user.uid), where('status', '==', 'pending'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const requestsData: FriendRequest[] = [];
+      const requestsData: IncomingRequest[] = [];
       for (const doc of snapshot.docs) {
           const data = doc.data();
           requestsData.push({ 
@@ -154,15 +168,43 @@ export default function FriendsPage() {
               status: 'pending'
             });
       }
-      setRequests(requestsData);
+      setIncomingRequests(requestsData);
       setLoadingRequests(false);
     }, (error) => {
-        console.error("Error fetching friend requests:", error);
+        console.error("Error fetching incoming friend requests:", error);
         setLoadingRequests(false);
     });
 
     return () => unsubscribe();
   }, [user]);
+
+  // Listen for sent friend requests
+  useEffect(() => {
+    if (!user) return;
+    setLoadingRequests(true);
+    const requestsRef = collection(db, 'friendRequests');
+    const q = query(requestsRef, where('from', '==', user.uid), where('status', '==', 'pending'));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const requestsData: SentRequest[] = [];
+      for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data();
+        requestsData.push({
+          id: docSnapshot.id,
+          to: data.to,
+          toName: data.toName,
+          toEmail: data.toEmail,
+          toPhotoURL: data.toPhotoURL,
+        });
+      }
+      setSentRequests(requestsData);
+    }, (error) => {
+        console.error("Error fetching sent friend requests:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
 
   // Listen for friends
   useEffect(() => {
@@ -191,7 +233,7 @@ export default function FriendsPage() {
     return () => unsubscribe();
   }, [user]);
 
-  const handleAcceptRequest = async (request: FriendRequest) => {
+  const handleAcceptRequest = async (request: IncomingRequest) => {
     if (!user) return;
     try {
       const batch = writeBatch(db);
@@ -278,9 +320,9 @@ export default function FriendsPage() {
           <TabsTrigger value="friends">My Friends ({friends.length})</TabsTrigger>
           <TabsTrigger value="requests">
             Friend Requests
-            {requests.length > 0 && (
+            {(incomingRequests.length + sentRequests.length) > 0 && (
                 <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                    {requests.length}
+                    {incomingRequests.length + sentRequests.length}
                 </span>
             )}
           </TabsTrigger>
@@ -318,36 +360,78 @@ export default function FriendsPage() {
         <TabsContent value="requests">
             {loadingRequests || authLoading ? (
                  <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
-            ) : requests.length === 0 ? (
+            ) : (incomingRequests.length === 0 && sentRequests.length === 0) ? (
                  <div className="text-center py-12 text-muted-foreground">You have no pending friend requests.</div>
             ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {requests.map((request) => (
-                    <Card key={request.id}>
-                        <CardContent className="flex items-center gap-4 p-4">
-                        <Avatar className="h-12 w-12">
-                            <AvatarImage src={request.fromPhotoURL} alt={request.fromName} />
-                            <AvatarFallback>
-                            {request.fromName.charAt(0)}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 truncate">
-                            <p className="font-semibold">{request.fromName}</p>
-                            <p className="truncate text-sm text-muted-foreground">
-                            {request.fromEmail}
-                            </p>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button size="icon" variant="outline" className="text-green-500 hover:text-green-500 border-green-500/50 hover:bg-green-500/10" onClick={() => handleAcceptRequest(request)}>
-                            <UserCheck className="h-4 w-4" />
-                            </Button>
-                            <Button size="icon" variant="outline" className="text-red-500 hover:text-red-500 border-red-500/50 hover:bg-red-500/10" onClick={() => handleDeclineRequest(request.id)}>
-                            <UserX className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        </CardContent>
-                    </Card>
-                    ))}
+                <div className="space-y-6">
+                    {/* Incoming Requests */}
+                    {incomingRequests.length > 0 && (
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Incoming Requests</CardTitle>
+                                <CardDescription>These people want to be your friend.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {incomingRequests.map((request) => (
+                                <div key={request.id} className="flex items-center gap-4">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={request.fromPhotoURL} alt={request.fromName} />
+                                        <AvatarFallback>
+                                        {request.fromName.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 truncate">
+                                        <p className="font-semibold">{request.fromName}</p>
+                                        <p className="truncate text-sm text-muted-foreground">
+                                        {request.fromEmail}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button size="icon" variant="outline" className="text-green-500 hover:text-green-500 border-green-500/50 hover:bg-green-500/10" onClick={() => handleAcceptRequest(request)}>
+                                        <UserCheck className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="icon" variant="outline" className="text-red-500 hover:text-red-500 border-red-500/50 hover:bg-red-500/10" onClick={() => handleDeclineRequest(request.id)}>
+                                        <UserX className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Sent Requests */}
+                    {sentRequests.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Sent Requests</CardTitle>
+                                <CardDescription>You've sent these people a friend request.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {sentRequests.map((request) => (
+                                <div key={request.id} className="flex items-center gap-4">
+                                    <Avatar className="h-12 w-12">
+                                        <AvatarImage src={request.toPhotoURL} alt={request.toName} />
+                                        <AvatarFallback>
+                                        {request.toName.charAt(0)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 truncate">
+                                        <p className="font-semibold">{request.toName}</p>
+                                        <p className="truncate text-sm text-muted-foreground">
+                                        {request.toEmail}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                       <Clock className="h-4 w-4" />
+                                       <span>Pending</span>
+                                    </div>
+                                </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
+
                 </div>
             )}
         </TabsContent>
