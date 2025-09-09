@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
+import { Skeleton } from './ui/skeleton';
 
 const StarRatingInput = ({
   rating,
@@ -100,8 +101,9 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   
   const handleSaveRating = async () => {
     if (userRating === 0) return;
-    const success = await handleSave({ rating: userRating });
+    const success = await handleSave({ rating: userRating, watched: true });
     if (success) {
+      setWatched(true);
       toast({
         title: 'Rating Saved!',
         description: `You rated ${movieDetails.title} ${userRating.toFixed(0)} stars.`,
@@ -111,7 +113,12 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   const handleWatchedChange = async (newWatchedState: boolean) => {
     setWatched(newWatchedState);
-    const success = await handleSave({ watched: newWatchedState });
+    const dataToSave: { watched: boolean; rating?: number } = { watched: newWatchedState };
+    if (!newWatchedState) {
+        dataToSave.rating = 0; // Reset rating if marked as unwatched
+        setUserRating(0);
+    }
+    const success = await handleSave(dataToSave);
      if (success) {
         toast({
         title: 'Watched Status Updated!',
@@ -122,13 +129,22 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   if (authLoading || !isDataLoaded) {
     return <div className="space-y-6 pt-4">
-      <div className="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
-      <div className="h-10 w-64 bg-gray-200 rounded animate-pulse"></div>
+      <div className="flex items-center space-x-2">
+          <Skeleton className="h-6 w-12 rounded-full" />
+          <Skeleton className="h-6 w-32 rounded-md" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-24 rounded-md" />
+        <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-80 rounded-md" />
+            <Skeleton className="h-10 w-28 rounded-md" />
+        </div>
+      </div>
     </div>
   }
 
   return (
-    <div className="pt-4 space-y-6">
+    <div className="pt-6 border-t mt-6 space-y-6">
       <div className="flex items-center space-x-2">
         <Switch id="watched-toggle" checked={watched} onCheckedChange={handleWatchedChange} />
         <Label htmlFor="watched-toggle" className="text-lg">
@@ -140,9 +156,9 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
         <Label className="text-lg">Your Rating</Label>
         <div className="flex flex-col items-start gap-4 mt-2 sm:flex-row sm:items-center">
           <StarRatingInput rating={userRating} setRating={setUserRating} />
-          <Button onClick={handleSaveRating}>Save Rating</Button>
+          <Button onClick={handleSaveRating} disabled={userRating === 0}>Save Rating</Button>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(0)} out of 10 stars.` : 'Rate this movie.'}</p>
+        <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(0)} out of 10 stars.` : 'Select a rating to save.'}</p>
       </div>
     </div>
   );
