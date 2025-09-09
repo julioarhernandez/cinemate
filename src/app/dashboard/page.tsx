@@ -184,15 +184,13 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   {friendActivity.activity.map((item) => (
                     <div key={`${item.friend.id}-${item.movie.id}`} className="flex items-start gap-4">
-                      <Link href={`/dashboard/friends/${item.friend.id}`}>
-                        <Avatar className="h-10 w-10 border">
-                           <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
-                           <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
-                        </Avatar>
-                      </Link>
+                      <Avatar className="h-10 w-10 border">
+                         <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
+                         <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                      </Avatar>
                       <div className="flex-1">
                         <p className="text-sm text-muted-foreground">
-                          <Link href={`/dashboard/friends/${item.friend.id}`} className="font-bold text-foreground hover:underline">{item.friend.displayName}</Link>
+                          <span className="font-bold text-foreground">{item.friend.displayName}</span>
                           {' '}watched{' '}
                           <Link href={`/dashboard/movies/${item.movie.id}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
                         </p>

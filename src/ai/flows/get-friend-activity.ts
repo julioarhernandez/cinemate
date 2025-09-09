@@ -12,7 +12,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import {
   collection,
   getDocs,
@@ -26,24 +26,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getMovieDetails, type MovieDetailsOutput } from './get-movie-details';
+import { GetFriendActivityOutputSchema, type GetFriendActivityOutput } from '@/ai/schemas/friend-activity-schemas';
 
-// Define the schema for a single activity item
-const FriendActivityItemSchema = z.object({
-  friend: z.object({
-    id: z.string(),
-    displayName: z.string(),
-  }),
-  movie: z.custom<MovieDetailsOutput>(),
-  watchedAt: z.custom<Timestamp>(),
-});
+export type { GetFriendActivityOutput };
 
-// Define the output schema for the flow
-export const GetFriendActivityOutputSchema = z.object({
-  activity: z.array(FriendActivityItemSchema),
-});
-export type GetFriendActivityOutput = z.infer<
-  typeof GetFriendActivityOutputSchema
->;
 
 /**
  * Main function to get friend activity.
