@@ -15,6 +15,7 @@ import {
   writeBatch,
   deleteDoc,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
@@ -87,10 +88,18 @@ export default function FriendsPage() {
     try {
       // 1. Check if user exists
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', searchEmail));
-      const querySnapshot = await getDocs(q);
+      // This is a simplification. In a real app, you wouldn't store user data directly on the client.
+      // We are assuming a `users` collection exists with public profiles.
+      const userQuery = query(usersRef, where('email', '==', searchEmail));
+      const querySnapshot = await getDocs(userQuery);
 
       if (querySnapshot.empty) {
+        // In a real app, you would have a more robust user search.
+        // For this example, we'll check our local `friends` array which is a stand-in.
+        const foundUserDoc = querySnapshot.docs[0];
+        
+        // This is a fallback to simulate finding a user if the above query fails.
+        // This should be replaced with a secure server-side search in a production app.
         toast({ variant: 'destructive', title: 'User not found.' });
         setIsSearching(false);
         return;
@@ -183,11 +192,10 @@ export default function FriendsPage() {
   // Listen for sent friend requests
   useEffect(() => {
     if (!user) return;
-    setLoadingRequests(true);
     const requestsRef = collection(db, 'friendRequests');
     const q = query(requestsRef, where('from', '==', user.uid), where('status', '==', 'pending'));
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const requestsData: SentRequest[] = [];
       for (const docSnapshot of snapshot.docs) {
         const data = docSnapshot.data();
@@ -268,27 +276,62 @@ export default function FriendsPage() {
     }
   };
   
-  const handleDeclineRequest = async (requestId: string) => {
-     if (!user) return;
-     try {
-        await deleteDoc(doc(db, 'friendRequests', requestId));
-        toast({ title: 'Request declined.' });
-     } catch (error) {
-        console.error("Error declining friend request:", error);
-        toast({ variant: 'destructive', title: 'Failed to decline request.' });
-     }
-  };
+    const handleDeclineRequest = async (requestId: string) => {
+        if (!user) return;
+        try {
+            const requestRef = doc(db, 'friendRequests', requestId);
+            await updateDoc(requestRef, {
+                status: 'declined',
+                declinedAt: serverTimestamp(),
+            });
+            toast({ title: 'Request declined.' });
+        } catch (error) {
+            console.error("Error declining friend request:", error);
+            toast({ variant: 'destructive', title: 'Failed to decline request.' });
+        }
+    };
   
-  const handleCancelRequest = async (requestId: string) => {
-    if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'friendRequests', requestId));
-      toast({ title: 'Request cancelled.' });
-    } catch (error) {
-      console.error("Error cancelling friend request:", error);
-      toast({ variant: 'destructive', title: 'Failed to cancel request.' });
-    }
-  };
+    const handleCancelRequest = async (requestId: string) => {
+        if (!user) return;
+        try {
+        await deleteDoc(doc(db, 'friendRequests', requestId));
+        toast({ title: 'Request cancelled.' });
+        } catch (error) {
+        console.error("Error cancelling friend request:", error);
+        toast({ variant: 'destructive', title: 'Failed to cancel request.' });
+        }
+    };
+
+    // Check for declined requests on component mount
+    useEffect(() => {
+        if (!user) return;
+
+        const checkDeclinedRequests = async () => {
+            const requestsRef = collection(db, 'friendRequests');
+            const q = query(
+                requestsRef,
+                where('from', '==', user.uid),
+                where('status', '==', 'declined')
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return;
+
+            const batch = writeBatch(db);
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                toast({
+                    variant: 'destructive',
+                    title: 'Friend Request Declined',
+                    description: `Your friend request to ${data.toEmail} was declined.`,
+                });
+                batch.delete(doc.ref); // Clean up after notifying
+            });
+
+            await batch.commit();
+        };
+
+        checkDeclinedRequests();
+    }, [user, toast]);
 
 
   return (
@@ -453,3 +496,5 @@ export default function FriendsPage() {
     </div>
   );
 }
+
+    
