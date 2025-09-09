@@ -89,7 +89,7 @@ export default function CollectionsPage() {
         const moviesData = await Promise.all(moviePromises);
         
         const fetchedMovies = moviesData
-          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Movie' && m.id !== 0);
+          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Movie' && !!m.id && m.id !== 0);
 
         setMovies(fetchedMovies);
 
@@ -292,7 +292,7 @@ export default function CollectionsPage() {
 
       {!loading && movies.length > 0 && (
         <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {paginatedMovies.map((movie) => (
                 <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
                     <Card className="group overflow-hidden h-full">

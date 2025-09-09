@@ -253,7 +253,7 @@ export default function MoviesPage() {
                             <PopoverTrigger asChild>
                                  <Button variant="outline" className="w-full justify-start font-normal">
                                     {selectedGenres.length > 0 ? `${selectedGenres.length} selected` : "Select genres"}
-                                </Button>
+                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                                <div className="p-4 grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
@@ -302,7 +302,7 @@ export default function MoviesPage() {
 
       {!loading && filteredMovies.length > 0 && (
         <>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {paginatedMovies.map((movie) => (
             <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
                 <Card className="group overflow-hidden h-full">
@@ -364,3 +364,5 @@ export default function MoviesPage() {
     </div>
   );
 }
+
+    
