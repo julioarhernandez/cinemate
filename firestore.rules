@@ -14,7 +14,7 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
 
-    // Friend requests - more permissive rules for proper functionality
+    // Friend requests rules
     match /friendRequests/{requestId} {
       // Allow users to read requests they sent or received
       allow read: if request.auth != null && 
@@ -23,38 +23,34 @@ service cloud.firestore {
       
       // Allow users to create requests they're sending
       allow create: if request.auth != null && 
-                       request.resource.data.from == request.auth.uid &&
-                       request.resource.data.keys().hasAll(["from", "to", "status"]);
+                       request.resource.data.from == request.auth.uid;
       
-      // Allow users to delete requests they sent or received
+      // Allow users to delete/cancel requests they sent OR received/declined
       allow delete: if request.auth != null && 
                        (resource.data.to == request.auth.uid || 
                         resource.data.from == request.auth.uid);
       
-      // Allow updating status (though not used in your current code)
+      // Allow a user to update a request to 'declined' if they are the recipient.
       allow update: if request.auth != null && 
                        resource.data.to == request.auth.uid &&
-                       request.resource.data.keys().hasOnly(["status"]);
+                       request.resource.data.status == 'declined';
     }
 
-    // Allow querying friend requests collection
-    match /friendRequests/{document=**} {
-      allow list: if request.auth != null;
-    }
-
-    // Friends lists - allow reading friend data for display
+    // Friends lists
     match /users/{userId}/friends/{friendId} {
-      // 1. Allow a user to manage their own friends list.
-      // 2. Allow a user to be added to another's friends list if they have a pending request.
-      allow write: if request.auth.uid == userId ||
-                   (request.auth.uid == friendId && 
-                    exists(/databases/$(database)/documents/friendRequests/$(request.resource.id)));
-      
       // Allow a user to read their own friends list, or allow friends to read each other's basic info
       allow read: if request.auth.uid == userId ||
                    exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+                   
+      // 1. Allow a user to manage their own friends list (add/remove).
+      // 2. Allow a user (friendId) to be added to another's (userId) friends list
+      //    IF the friend request document exists and is being sent TO the user performing the request.
+      //    This is what allows the batched write for accepting a request.
+      allow write: if request.auth.uid == userId ||
+                    (request.auth.uid == friendId &&
+                     get(/databases/$(database)/documents/friendRequests/$(requestId(userId, friendId))).data.to == friendId);
       
-      // Only allow a user to delete their own friends
+      // Only allow a user to delete from their own friends list
       allow delete: if request.auth.uid == userId;
     }
     
@@ -70,6 +66,11 @@ service cloud.firestore {
     // AI Recommendations history
     match /users/{userId}/recommendations/{recommendationId} {
        allow read, write: if request.auth.uid == userId;
+    }
+    
+    // Helper function to reconstruct potential friend request ID
+    function requestId(userA, userB) {
+      return userA + "_" + userB;
     }
   }
 }
