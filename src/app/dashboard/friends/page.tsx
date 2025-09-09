@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,6 +23,17 @@ import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useFriendRequestCount } from '@/hooks/use-friend-request-count';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +44,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { UserPlus, UserCheck, UserX, Loader2, Clock } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, Loader2, UserMinus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 interface IncomingRequest {
@@ -237,9 +249,9 @@ export default function FriendsPage() {
 
   const handleAcceptRequest = async (request: IncomingRequest) => {
     if (!user) return;
-    try {
-      const batch = writeBatch(db);
+    const batch = writeBatch(db);
 
+    try {
       // Add to each other's friends list
       const currentUserFriendRef = doc(db, 'users', user.uid, 'friends', request.from);
       batch.set(currentUserFriendRef, {
@@ -293,6 +305,34 @@ export default function FriendsPage() {
         toast({ variant: 'destructive', title: 'Failed to cancel request.' });
         }
     };
+
+    const handleUnfriend = async (friend: Friend) => {
+        if (!user) return;
+        
+        const batch = writeBatch(db);
+        try {
+            // Remove friend from current user's list
+            const currentUserFriendRef = doc(db, 'users', user.uid, 'friends', friend.id);
+            batch.delete(currentUserFriendRef);
+
+            // Remove current user from friend's list
+            const otherUserFriendRef = doc(db, 'users', friend.id, 'friends', user.uid);
+            batch.delete(otherUserFriendRef);
+
+            await batch.commit();
+            toast({
+                title: 'Friend Removed',
+                description: `You are no longer friends with ${friend.displayName}.`,
+            });
+        } catch (error) {
+            console.error("Error removing friend:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Unfriend Failed',
+                description: `Could not remove ${friend.displayName}. Please try again.`,
+            });
+        }
+    }
 
     // Check for declined requests on component mount
     useEffect(() => {
@@ -385,19 +425,43 @@ export default function FriendsPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {friends.map((friend) => (
                     <Card key={friend.id}>
-                        <CardContent className="flex items-center gap-4 p-4">
-                        <Avatar className="h-12 w-12">
-                            <AvatarImage src={friend.photoURL} alt={friend.displayName} />
-                            <AvatarFallback>
-                            {friend.displayName?.charAt(0) ?? 'U'}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="truncate">
-                            <p className="font-semibold">{friend.displayName}</p>
-                            <p className="truncate text-sm text-muted-foreground">
-                            {friend.email}
-                            </p>
-                        </div>
+                        <CardContent className="flex items-center justify-between gap-4 p-4">
+                            <div className="flex items-center gap-4 truncate">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src={friend.photoURL} alt={friend.displayName} />
+                                    <AvatarFallback>
+                                    {friend.displayName?.charAt(0) ?? 'U'}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="truncate">
+                                    <p className="font-semibold">{friend.displayName}</p>
+                                    <p className="truncate text-sm text-muted-foreground">
+                                    {friend.email}
+                                    </p>
+                                </div>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex-shrink-0">
+                                        <UserMinus className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently remove {friend.displayName} from your friends list. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleUnfriend(friend)} className="bg-destructive hover:bg-destructive/90">
+                                        Unfriend
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+
                         </CardContent>
                     </Card>
                     ))}
@@ -488,3 +552,5 @@ export default function FriendsPage() {
     </div>
   );
 }
+
+    

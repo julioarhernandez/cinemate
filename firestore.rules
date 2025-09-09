@@ -1,51 +1,60 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own profile and list other users
+
+    // Users can read/write their own user document
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Authenticated users can list users to find friends
     match /users/{document=**} {
       allow list: if request.auth != null;
     }
 
-    // Rules for the friendRequests collection
+    // Rules for friend requests
     match /friendRequests/{requestId} {
       // Allow users to read requests they sent or received.
       allow read: if request.auth != null && 
                      (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
       
-      // Allow users to create requests if they are the sender.
-      allow create: if request.auth != null && 
-                       request.resource.data.from == request.auth.uid;
+      // Allow users to create requests they are sending.
+      allow create: if request.auth != null && request.resource.data.from == request.auth.uid;
       
-      // Allow users to delete requests they sent (cancel) or received (part of accept).
+      // Allow users to delete (cancel/decline) requests they sent or received.
       allow delete: if request.auth != null && 
                        (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
       
       // Allow a user to update a request to 'declined' if they are the recipient.
-      allow update: if request.auth != null &&
+      allow update: if request.auth != null && 
                        resource.data.to == request.auth.uid &&
                        request.resource.data.status == 'declined';
     }
 
-    // Rules for the 'friends' subcollection within each user document
+    // Rules for friends lists
     match /users/{userId}/friends/{friendId} {
-      // Allow a user to read their own friends list, or allow friends to read each other's basic info.
+      // Allow reading their own friends list, or being read by a friend.
       allow read: if request.auth.uid == userId ||
                    exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+                   
+      // Allow writing to your own friends list.
+      // Also allow writing to another user's list if accepting a request from them.
+      allow write: if request.auth.uid == userId ||
+                    (request.auth.uid == friendId && 
+                     exists(/databases/$(database)/documents/friendRequests/{requestId}) &&
+                     get(/databases/$(database)/documents/friendRequests/{requestId}).data.from == userId &&
+                     get(/databases/$(database)/documents/friendRequests/{requestId}).data.to == request.auth.uid);
 
-      // Allow a user to write/delete their own friends list.
-      // Also, allow a user to be added to another's friends list (write)
-      // IF a pending friend request from the logged-in user exists.
-      allow write, delete: if request.auth.uid == userId ||
-                      (get(/databases/$(database)/documents/friendRequests/$(request.auth.uid + '_' + friendId)).data.status == 'pending' &&
-                       get(/databases/$(database)/documents/friendRequests/$(request.auth.uid + '_' + friendId)).data.to == friendId);
+      // Allow deleting from your own friends list.
+      // Also allow a user to be deleted from another's list if they are friends.
+      allow delete: if request.auth.uid == userId ||
+                     (request.auth.uid == friendId &&
+                      exists(/databases/$(database)/documents/users/$(userId)/friends/$(friendId)));
     }
     
     // Ratings & Watched list
     match /users/{userId}/ratings/{ratingId} {
-      // Allow user to manage their own ratings
       allow read, write: if request.auth.uid == userId;
       
       // Allow friends to read ratings for social features
@@ -59,3 +68,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
