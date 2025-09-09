@@ -195,7 +195,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
               <CardContent className="space-y-4">
                 {result.recommendations.map((rec, index) => (
                     <div key={index} className="space-y-2 border-b pb-4 last:border-b-0 last:pb-0">
-                        <Link href={`/dashboard/movies?search=${encodeURIComponent(rec.title + ' ' + rec.year)}`}>
+                        <Link href={`/dashboard/movies?search=${encodeURIComponent(rec.title)}&year=${rec.year}`}>
                            <h3 className="text-xl font-bold text-primary hover:underline">
                             {rec.title} ({rec.year})
                            </h3>

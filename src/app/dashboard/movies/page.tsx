@@ -42,6 +42,8 @@ type UserRatings = Record<string, UserMovieData>;
 function MoviesPageContent() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
+  const initialYear = searchParams.get('year') || '';
+
 
   const [user, authLoading] = useAuthState(auth);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -53,7 +55,7 @@ function MoviesPageContent() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [watchedFilter, setWatchedFilter] = useState<'all' | 'watched' | 'not-watched'>('all');
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
-  const [yearRange, setYearRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [yearRange, setYearRange] = useState<{ start: string; end: string }>({ start: initialYear, end: initialYear });
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
 
   // Pagination states

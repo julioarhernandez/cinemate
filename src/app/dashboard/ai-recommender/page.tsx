@@ -102,7 +102,7 @@ export default function AiRecommenderPage() {
                 <CardContent className="space-y-4">
                   {item.recommendations.map((rec, index) => (
                       <div key={index} className="space-y-2 border-t pt-4 first:border-t-0 first:pt-0">
-                          <Link href={`/dashboard/movies?search=${encodeURIComponent(rec.title + ' ' + rec.year)}`}>
+                          <Link href={`/dashboard/movies?search=${encodeURIComponent(rec.title)}&year=${rec.year}`}>
                             <h3 className="text-xl font-bold text-primary hover:underline">
                               {rec.title} ({rec.year})
                             </h3>
