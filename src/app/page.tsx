@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -8,7 +9,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -67,17 +67,6 @@ export default function LoginPage() {
             Sign in with Google
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link
-              href="/register"
-              className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
-            >
-              Register
-            </Link>
-          </div>
-        </CardFooter>
       </Card>
     </div>
   );
