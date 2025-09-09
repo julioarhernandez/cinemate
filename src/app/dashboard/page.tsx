@@ -98,22 +98,24 @@ export default function DashboardPage() {
 
           for (const friend of friends) {
             const ratingsRef = collection(db, 'users', friend.id, 'ratings');
+            // Simplified query to avoid composite index requirement
             const q = query(
               ratingsRef,
-              where('watched', '==', true),
-              where('isPrivate', '==', false),
               orderBy('updatedAt', 'desc'),
-              limit(10) // Get the last 10 activities per friend to keep it manageable
+              limit(20) // Fetch more docs to filter in-app
             );
             const ratingsSnapshot = await getDocs(q);
 
             ratingsSnapshot.forEach((doc) => {
               const data = doc.data();
-              allRatings.push({
-                friend: { id: friend.id, displayName: friend.displayName },
-                movieId: doc.id,
-                watchedAt: data.updatedAt,
-              });
+              // Filter in the code instead of in the query
+              if (data.watched === true && data.isPrivate !== true) {
+                 allRatings.push({
+                    friend: { id: friend.id, displayName: friend.displayName },
+                    movieId: doc.id,
+                    watchedAt: data.updatedAt,
+                });
+              }
             });
           }
 
