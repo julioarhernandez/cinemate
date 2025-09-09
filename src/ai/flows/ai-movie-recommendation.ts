@@ -23,7 +23,6 @@ export type RecommendMovieInput = z.infer<typeof RecommendMovieInputSchema>;
 
 // Define the output schema for a single recommendation
 const RecommendationSchema = z.object({
-    id: z.number().describe("The movie's unique ID from the database."),
     title: z.string().describe('The title of the recommended movie.'),
     year: z.string().describe('The release year of the recommended movie.'),
     reasoning: z.string().describe('The reasoning for recommending this specific movie.'),
@@ -31,7 +30,7 @@ const RecommendationSchema = z.object({
 
 // Define the final output schema
 const RecommendMovieOutputSchema = z.object({
-    recommendations: z.array(RecommendationSchema).describe('A list of at least 3 personalized movie recommendations, including their database ID and release year.'),
+    recommendations: z.array(RecommendationSchema).describe('A list of at least 3 personalized movie recommendations, including their release year.'),
 });
 export type RecommendMovieOutput = z.infer<typeof RecommendMovieOutputSchema>;
 
@@ -45,7 +44,7 @@ const recommendMoviePrompt = ai.definePrompt({
   name: 'recommendMoviePrompt',
   input: { schema: RecommendMovieInputSchema },
   output: { schema: RecommendMovieOutputSchema },
-  prompt: `You are a movie recommendation expert. Your task is to recommend at least 3 movies to a user based on a list of movies and genres they like. For each movie, you must provide its title, its database ID, its release year, and a reason for the recommendation.
+  prompt: `You are a movie recommendation expert. Your task is to recommend at least 3 movies to a user based on a list of movies and genres they like. For each movie, you must provide its title, its release year, and a reason for the recommendation.
 
 User's Liked Movies & Genres: {{{userPreferences}}}
 
@@ -53,7 +52,7 @@ Based on this information, recommend a list of at least 3 specific movies that t
 - Do not recommend movies that are already on their list.
 - Provide a unique set of recommendations if asked multiple times with the same input.
 - Explain why you are recommending each movie.
-- It is critical that you find the correct ID for each movie.`,
+- It is critical that you find the correct release year for each movie.`,
 });
 
 // Define the flow

@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -38,9 +39,12 @@ interface UserMovieData {
 
 type UserRatings = Record<string, UserMovieData>;
 
-export default function MoviesPage() {
+function MoviesPageContent() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+
   const [user, authLoading] = useAuthState(auth);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
@@ -366,4 +370,10 @@ export default function MoviesPage() {
   );
 }
 
-    
+export default function MoviesPage() {
+    return (
+        <React.Suspense fallback={<div>Loading...</div>}>
+            <MoviesPageContent />
+        </React.Suspense>
+    )
+}

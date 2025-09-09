@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -189,7 +189,7 @@ export function AiRecommenderForm() {
               <CardContent className="space-y-4">
                 {result.recommendations.map((rec, index) => (
                     <div key={index} className="space-y-2 border-b pb-4 last:border-b-0 last:pb-0">
-                        <Link href={`/dashboard/movies/${rec.id}`}>
+                        <Link href={`/dashboard/movies?search=${encodeURIComponent(rec.title + ' ' + rec.year)}`}>
                            <h3 className="text-xl font-bold text-primary hover:underline">
                             {rec.title} ({rec.year})
                            </h3>
