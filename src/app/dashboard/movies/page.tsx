@@ -340,7 +340,8 @@ export default function MoviesPage() {
         </div>
         <div className="flex items-center justify-between pt-4">
             <p className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
+                {totalPages > 0 ? `Page ${currentPage} of ${totalPages} ` : ''}
+                ({filteredMovies.length} movie{filteredMovies.length === 1 ? '' : 's'})
             </p>
             <div className="flex items-center gap-2">
                 <Button
