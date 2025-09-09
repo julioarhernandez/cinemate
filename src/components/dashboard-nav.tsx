@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import {
   Film,
   LayoutDashboard,
   Users,
+  Library,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -29,6 +31,7 @@ import { UserProfile } from '@/components/user-profile';
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/dashboard/movies', icon: Film, label: 'Movies' },
+  { href: '/dashboard/collections', icon: Library, label: 'My Collection' },
   { href: '/dashboard/friends', icon: Users, label: 'Friends' },
   {
     href: '/dashboard/ai-recommender',
