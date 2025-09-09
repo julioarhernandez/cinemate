@@ -1,10 +1,12 @@
+
 "use client";
 
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Bot, Loader2, Sparkles } from 'lucide-react';
+import { Bot, Loader2, Sparkles, Library } from 'lucide-react';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 import {
   recommendMovie,
@@ -23,39 +25,31 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { auth, db } from '@/lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getMovieDetails } from '@/ai/flows/get-movie-details';
+
 
 const formSchema = z.object({
-  userMovieHistory: z
+  userPreferences: z
     .string()
-    .min(1, 'Please provide your movie history.')
+    .min(1, 'Please list some movies or genres you like.')
     .describe(
-      'A list of movies the user has watched, including titles and ratings.'
-    ),
-  friendRatings: z
-    .string()
-    .min(1, 'Please provide ratings from friends.')
-    .describe(
-      'A list of movie ratings from the user’s friends, including user and their ratings.'
-    ),
-  commonViewingPatterns: z
-    .string()
-    .min(1, 'Please provide common viewing patterns.')
-    .describe(
-      'Common viewing patterns among users with similar tastes, including genres and popular movies.'
+      'A list of movies or genres that the user likes.'
     ),
 });
 
 export function AiRecommenderForm() {
+  const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(false);
+  const [isFetchingWatched, setIsFetchingWatched] = useState(false);
   const [result, setResult] = useState<RecommendMovieOutput | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      userMovieHistory: '',
-      friendRatings: '',
-      commonViewingPatterns: '',
+      userPreferences: '',
     },
   });
 
@@ -78,83 +72,114 @@ export function AiRecommenderForm() {
     }
   }
 
+  const handleUseWatchedList = async () => {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Not Signed In',
+            description: 'You must be signed in to use your watched list.',
+        });
+        return;
+    }
+    setIsFetchingWatched(true);
+    try {
+        const ratingsCollection = collection(db, 'users', user.uid, 'ratings');
+        const q = query(ratingsCollection, where('watched', '==', true));
+        const snapshot = await getDocs(q);
+        
+        const movieIds: number[] = [];
+        snapshot.forEach((doc) => {
+            movieIds.push(parseInt(doc.id));
+        });
+
+        if (movieIds.length === 0) {
+            toast({
+                title: 'Empty Collection',
+                description: "You haven't marked any movies as watched yet.",
+            });
+            return;
+        }
+        
+        const moviePromises = movieIds.map(id => getMovieDetails({ id }));
+        const moviesData = await Promise.all(moviePromises);
+        
+        const movieTitles = moviesData
+            .filter(movie => movie && movie.title !== 'Unknown Movie')
+            .map(movie => movie.title)
+            .join(', ');
+
+        form.setValue('userPreferences', movieTitles);
+        toast({
+            title: 'Success!',
+            description: 'Loaded your watched movies into the text area.',
+        });
+
+    } catch (error) {
+        console.error('Failed to fetch watched list:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Fetch Failed',
+            description: 'Could not fetch your watched list. Please try again.',
+        });
+    } finally {
+        setIsFetchingWatched(false);
+    }
+  };
+
+
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <FormField
             control={form.control}
-            name="userMovieHistory"
+            name="userPreferences"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Your Movie History</FormLabel>
+                <FormLabel>Your Favorite Movies & Genres</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="e.g., The Matrix (5/5), Inception (5/5), The Notebook (2/5)"
-                    className="min-h-[100px]"
+                    placeholder="e.g., The Matrix, Sci-Fi, Thrillers, Inception, Parasite"
+                    className="min-h-[200px]"
                     {...field}
                   />
                 </FormControl>
                 <FormDescription>
-                  List some movies you've watched and how you'd rate them.
+                  List movies or genres you like. The more you add, the better the recommendation.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="friendRatings"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Friend's Ratings</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="e.g., John Doe: The Dark Knight (5/5), Parasite (5/5). Jane Smith: La La Land (5/5)."
-                    className="min-h-[100px]"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  What do your friends think about certain movies?
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="commonViewingPatterns"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Common Viewing Patterns</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="e.g., We usually watch sci-fi and thrillers. Not a fan of horror movies."
-                    className="min-h-[100px]"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Describe genres or types of movies you and your friends enjoy.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Thinking...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Get Recommendation
-              </>
-            )}
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Thinking...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Get Recommendation
+                </>
+              )}
+            </Button>
+             <Button type="button" variant="secondary" onClick={handleUseWatchedList} disabled={isFetchingWatched || loading} className="w-full">
+              {isFetchingWatched ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Fetching...
+                </>
+              ) : (
+                <>
+                  <Library className="mr-2 h-4 w-4" />
+                  Use My Watched List
+                </>
+              )}
+            </Button>
+          </div>
+
         </form>
       </Form>
       <div className="flex items-center justify-center">
@@ -173,8 +198,7 @@ export function AiRecommenderForm() {
               Your Recommendation Awaits
             </h3>
             <p className="mt-2 max-w-sm text-muted-foreground">
-              Fill out the details on the left, and our AI will suggest a movie
-              you're sure to love.
+              Enter some movies you like, or use your watched list, and our AI will suggest something new.
             </p>
           </div>
         )}

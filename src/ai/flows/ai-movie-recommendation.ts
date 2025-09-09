@@ -1,9 +1,9 @@
+
 // This is a server-side file.
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for providing personalized movie recommendations based on user history,
- * friend ratings, and common viewing patterns.
+ * @fileOverview This file defines a Genkit flow for providing personalized movie recommendations based on a user's favorite movies and genres.
  *
  * @exports {recommendMovie} - The main function to trigger the movie recommendation flow.
  * @exports {RecommendMovieInput} - The input type for the recommendMovie function.
@@ -15,20 +15,10 @@ import { z } from 'genkit';
 
 // Define the input schema
 const RecommendMovieInputSchema = z.object({
-  userMovieHistory: z
+  userPreferences: z
     .string()
     .describe(
-      'A list of movies the user has watched, including titles and ratings.'
-    ),
-  friendRatings: z
-    .string()
-    .describe(
-      'A list of movie ratings from the user’s friends, including user and their ratings.'
-    ),
-  commonViewingPatterns: z
-    .string()
-    .describe(
-      'Common viewing patterns among users with similar tastes, including genres and popular movies.'
+      'A list of movies or genres that the user likes.'
     ),
 });
 export type RecommendMovieInput = z.infer<typeof RecommendMovieInputSchema>;
@@ -38,7 +28,7 @@ const RecommendMovieOutputSchema = z.object({
   movieRecommendation: z
     .string()
     .describe(
-      'A personalized movie recommendation based on the user’s viewing history, friend ratings, and common viewing patterns.'
+      'A personalized movie recommendation based on the user’s favorite movies and genres.'
     ),
   reasoning: z
     .string()
@@ -58,15 +48,11 @@ const recommendMoviePrompt = ai.definePrompt({
   name: 'recommendMoviePrompt',
   input: { schema: RecommendMovieInputSchema },
   output: { schema: RecommendMovieOutputSchema },
-  prompt: `You are a movie recommendation expert. Consider the user's movie history, friend ratings, and common viewing patterns to provide a personalized movie recommendation.
+  prompt: `You are a movie recommendation expert. Your task is to recommend a movie to a user based on a list of movies and genres they like.
 
-User Movie History: {{{userMovieHistory}}}
-Friend Ratings: {{{friendRatings}}}
-Common Viewing Patterns: {{{commonViewingPatterns}}}
+User's Liked Movies & Genres: {{{userPreferences}}}
 
-Based on this information, what movie would you recommend to the user and why? Explain the reasoning behind your recommendation.
-
-Recommendation:`,
+Based on this information, recommend a single, specific movie that the user is likely to enjoy. Do not recommend a movie that is already on their list. Explain why you are recommending this movie.`,
 });
 
 // Define the flow
