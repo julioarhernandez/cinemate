@@ -11,6 +11,7 @@ import {
   Sparkles,
   Loader2,
   Eye,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 interface FriendActivityItem {
   friend: { id: string; displayName: string; photoURL?: string; };
   movie: MovieDetailsOutput;
+  rating: number;
   watchedAt: Timestamp;
 }
 
@@ -105,6 +107,7 @@ export default function DashboardPage() {
           let allRatings: {
             friend: { id: string; displayName: string; photoURL?: string };
             movieId: string;
+            rating: number;
             watchedAt: Timestamp;
           }[] = [];
 
@@ -125,6 +128,7 @@ export default function DashboardPage() {
                  allRatings.push({
                     friend: { id: friend.id, displayName: friend.displayName, photoURL: friend.photoURL },
                     movieId: doc.id,
+                    rating: data.rating || 0,
                     watchedAt: data.updatedAt,
                 });
               }
@@ -144,6 +148,7 @@ export default function DashboardPage() {
               return {
                 friend: rating.friend,
                 movie: movieDetails,
+                rating: rating.rating,
                 watchedAt: rating.watchedAt,
               };
             })
@@ -286,9 +291,18 @@ export default function DashboardPage() {
                           {' '}watched{' '}
                           <Link href={`/dashboard/movies/${item.movie.id}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                           {formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}
-                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
+                          {item.rating > 0 && (
+                            <>
+                              <span>&middot;</span>
+                              <div className="flex items-center gap-1 text-amber-500">
+                                <Star className="h-3 w-3 fill-current" />
+                                <span>{item.rating}/10</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                        <Link href={`/dashboard/movies/${item.movie.id}`}>
                         <Image
