@@ -1,4 +1,25 @@
+
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  writeBatch,
+  deleteDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,35 +30,212 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, UserPlus, UserCheck, UserX } from 'lucide-react';
+import { UserPlus, UserCheck, UserX, Loader2 } from 'lucide-react';
 
-const friends = [
-  {
-    name: 'Jane Doe',
-    email: 'jane.doe@example.com',
-    avatar: 'https://picsum.photos/100/100?random=11',
-  },
-  {
-    name: 'John Smith',
-    email: 'john.smith@example.com',
-    avatar: 'https://picsum.photos/100/100?random=12',
-  },
-  {
-    name: 'Emily White',
-    email: 'emily.white@example.com',
-    avatar: 'https://picsum.photos/100/100?random=13',
-  },
-];
+interface FriendRequest {
+  id: string;
+  from: string;
+  fromName: string;
+  fromEmail: string;
+  fromPhotoURL?: string;
+  status: 'pending';
+}
 
-const requests = [
-  {
-    name: 'Michael Brown',
-    email: 'michael.brown@example.com',
-    avatar: 'https://picsum.photos/100/100?random=14',
-  },
-];
+interface Friend {
+  id: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+}
 
 export default function FriendsPage() {
+  const [user, authLoading] = useAuthState(auth);
+  const { toast } = useToast();
+  
+  const [searchEmail, setSearchEmail] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
+
+  const [requests, setRequests] = useState<FriendRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+
+  // Send friend request
+  const handleSendRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !searchEmail) return;
+    if (searchEmail === user.email) {
+      toast({ variant: 'destructive', title: "You can't add yourself as a friend." });
+      return;
+    }
+
+    setIsSearching(true);
+    
+    try {
+      // 1. Check if user exists
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', searchEmail));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        toast({ variant: 'destructive', title: 'User not found.' });
+        setIsSearching(false);
+        return;
+      }
+      
+      const foundUserDoc = querySnapshot.docs[0];
+      const foundUserId = foundUserDoc.id;
+
+      // 2. Check if already friends
+      const friendDocRef = doc(db, 'users', user.uid, 'friends', foundUserId);
+      const friendDoc = await getDoc(friendDocRef);
+      if (friendDoc.exists()) {
+        toast({ variant: 'destructive', title: 'You are already friends with this user.' });
+        setIsSearching(false);
+        return;
+      }
+
+      // 3. Check if a request already exists
+      const requestsRef = collection(db, 'friendRequests');
+      const sentRequestQuery = query(requestsRef, where('from', '==', user.uid), where('to', '==', foundUserId));
+      const receivedRequestQuery = query(requestsRef, where('from', '==', foundUserId), where('to', '==', user.uid));
+      
+      const [sentSnapshot, receivedSnapshot] = await Promise.all([
+          getDocs(sentRequestQuery),
+          getDocs(receivedRequestQuery)
+      ]);
+
+      if (!sentSnapshot.empty || !receivedSnapshot.empty) {
+          toast({ variant: "destructive", title: "A friend request is already pending." });
+          setIsSearching(false);
+          return;
+      }
+      
+      // 4. Send request
+      await addDoc(requestsRef, {
+        from: user.uid,
+        fromName: user.displayName,
+        fromEmail: user.email,
+        fromPhotoURL: user.photoURL,
+        to: foundUserId,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ title: 'Friend request sent!' });
+      setSearchEmail('');
+
+    } catch (error) {
+      console.error("Error sending friend request:", error);
+      toast({ variant: 'destructive', title: 'Failed to send request.' });
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Listen for incoming friend requests
+  useEffect(() => {
+    if (!user) return;
+    setLoadingRequests(true);
+    const requestsRef = collection(db, 'friendRequests');
+    const q = query(requestsRef, where('to', '==', user.uid), where('status', '==', 'pending'));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const requestsData: FriendRequest[] = [];
+      for (const doc of snapshot.docs) {
+          const data = doc.data();
+          requestsData.push({ 
+              id: doc.id,
+              from: data.from,
+              fromName: data.fromName,
+              fromEmail: data.fromEmail,
+              fromPhotoURL: data.fromPhotoURL,
+              status: 'pending'
+            });
+      }
+      setRequests(requestsData);
+      setLoadingRequests(false);
+    }, (error) => {
+        console.error("Error fetching friend requests:", error);
+        setLoadingRequests(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Listen for friends
+  useEffect(() => {
+    if (!user) return;
+    setLoadingFriends(true);
+    const friendsRef = collection(db, 'users', user.uid, 'friends');
+    
+    const unsubscribe = onSnapshot(friendsRef, async (snapshot) => {
+        const friendsData: Friend[] = [];
+        for (const doc of snapshot.docs) {
+            const friendData = doc.data();
+            friendsData.push({
+                id: doc.id,
+                displayName: friendData.displayName,
+                email: friendData.email,
+                photoURL: friendData.photoURL,
+            });
+        }
+        setFriends(friendsData);
+        setLoadingFriends(false);
+    }, (error) => {
+        console.error("Error fetching friends list:", error);
+        setLoadingFriends(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleAcceptRequest = async (request: FriendRequest) => {
+    if (!user) return;
+    try {
+      const batch = writeBatch(db);
+
+      // Add to each other's friends list
+      const currentUserFriendRef = doc(db, 'users', user.uid, 'friends', request.from);
+      batch.set(currentUserFriendRef, {
+        displayName: request.fromName,
+        email: request.fromEmail,
+        photoURL: request.fromPhotoURL || '',
+      });
+
+      const otherUserFriendRef = doc(db, 'users', request.from, 'friends', user.uid);
+      batch.set(otherUserFriendRef, {
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL || '',
+      });
+      
+      // Delete the friend request
+      const requestRef = doc(db, 'friendRequests', request.id);
+      batch.delete(requestRef);
+      
+      await batch.commit();
+      toast({ title: 'Friend added!' });
+
+    } catch (error) {
+      console.error("Error accepting friend request:", error);
+      toast({ variant: 'destructive', title: 'Failed to add friend.' });
+    }
+  };
+  
+  const handleDeclineRequest = async (requestId: string) => {
+     if (!user) return;
+     try {
+        await deleteDoc(doc(db, 'friendRequests', requestId));
+        toast({ title: 'Request declined.' });
+     } catch (error) {
+        console.error("Error declining friend request:", error);
+        toast({ variant: 'destructive', title: 'Failed to decline request.' });
+     }
+  };
+
+
   return (
     <div className="space-y-8">
       <div>
@@ -54,82 +252,108 @@ export default function FriendsPage() {
           <CardTitle className="font-headline text-lg">Find Friends</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex w-full max-w-lg items-center space-x-2">
+          <form onSubmit={handleSendRequest} className="flex w-full max-w-lg items-center space-x-2">
             <Input
               type="email"
               placeholder="Enter friend's email"
               className="flex-1"
+              value={searchEmail}
+              onChange={(e) => setSearchEmail(e.target.value)}
+              disabled={isSearching}
             />
-            <Button type="submit">
-              <UserPlus className="mr-2 h-4 w-4" /> Send Request
+            <Button type="submit" disabled={isSearching || !searchEmail}>
+              {isSearching ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="mr-2 h-4 w-4" />
+              )}
+              Send Request
             </Button>
-          </div>
+          </form>
         </CardContent>
       </Card>
 
       <Tabs defaultValue="friends" className="w-full">
         <TabsList>
-          <TabsTrigger value="friends">My Friends</TabsTrigger>
+          <TabsTrigger value="friends">My Friends ({friends.length})</TabsTrigger>
           <TabsTrigger value="requests">
             Friend Requests
-            <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-              {requests.length}
-            </span>
+            {requests.length > 0 && (
+                <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                    {requests.length}
+                </span>
+            )}
           </TabsTrigger>
         </TabsList>
+
         <TabsContent value="friends">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {friends.map((friend) => (
-              <Card key={friend.email}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={friend.avatar} alt={friend.name} />
-                    <AvatarFallback>
-                      {friend.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="truncate">
-                    <p className="font-semibold">{friend.name}</p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {friend.email}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+            {loadingFriends || authLoading ? (
+                 <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            ) : friends.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">You haven't added any friends yet.</div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {friends.map((friend) => (
+                    <Card key={friend.id}>
+                        <CardContent className="flex items-center gap-4 p-4">
+                        <Avatar className="h-12 w-12">
+                            <AvatarImage src={friend.photoURL} alt={friend.displayName} />
+                            <AvatarFallback>
+                            {friend.displayName.charAt(0)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="truncate">
+                            <p className="font-semibold">{friend.displayName}</p>
+                            <p className="truncate text-sm text-muted-foreground">
+                            {friend.email}
+                            </p>
+                        </div>
+                        </CardContent>
+                    </Card>
+                    ))}
+                </div>
+            )}
         </TabsContent>
+
         <TabsContent value="requests">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {requests.map((request) => (
-              <Card key={request.email}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={request.avatar} alt={request.name} />
-                    <AvatarFallback>
-                      {request.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 truncate">
-                    <p className="font-semibold">{request.name}</p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {request.email}
-                    </p>
-                  </div>
-                   <div className="flex gap-2">
-                    <Button size="icon" variant="outline" className="text-green-500 hover:text-green-500 border-green-500/50 hover:bg-green-500/10">
-                      <UserCheck className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="outline" className="text-red-500 hover:text-red-500 border-red-500/50 hover:bg-red-500/10">
-                      <UserX className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+            {loadingRequests || authLoading ? (
+                 <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            ) : requests.length === 0 ? (
+                 <div className="text-center py-12 text-muted-foreground">You have no pending friend requests.</div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {requests.map((request) => (
+                    <Card key={request.id}>
+                        <CardContent className="flex items-center gap-4 p-4">
+                        <Avatar className="h-12 w-12">
+                            <AvatarImage src={request.fromPhotoURL} alt={request.fromName} />
+                            <AvatarFallback>
+                            {request.fromName.charAt(0)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 truncate">
+                            <p className="font-semibold">{request.fromName}</p>
+                            <p className="truncate text-sm text-muted-foreground">
+                            {request.fromEmail}
+                            </p>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button size="icon" variant="outline" className="text-green-500 hover:text-green-500 border-green-500/50 hover:bg-green-500/10" onClick={() => handleAcceptRequest(request)}>
+                            <UserCheck className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="outline" className="text-red-500 hover:text-red-500 border-red-500/50 hover:bg-red-500/10" onClick={() => handleDeclineRequest(request.id)}>
+                            <UserX className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        </CardContent>
+                    </Card>
+                    ))}
+                </div>
+            )}
         </TabsContent>
       </Tabs>
     </div>
   );
 }
+
+    
