@@ -48,6 +48,11 @@ export async function searchMovies(
     // Otherwise, use the /discover/movie endpoint for advanced filtering
     url = `https://api.themoviedb.org/3/discover/movie`;
     params.append('sort_by', sortBy);
+    
+    // Add a filter to only include movies released up to today
+    const today = new Date().toISOString().split('T')[0];
+    params.append('primary_release_date.lte', today);
+
     // TMDB release_date filter is inclusive.
     if (year) {
       params.append('primary_release_date.gte', `${year}-01-01`);
