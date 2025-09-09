@@ -43,12 +43,12 @@ const navItems = [
 
 export function DashboardNav() {
   const pathname = usePathname();
-  const { open, setOpen, isMobile } = useSidebar();
+  const { setOpenMobile, isMobile } = useSidebar();
   const friendRequestCount = useFriendRequestCount();
 
   const handleLinkClick = () => {
     if (isMobile) {
-      setOpen(false);
+      setOpenMobile(false);
     }
   };
   
