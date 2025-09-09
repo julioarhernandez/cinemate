@@ -10,6 +10,7 @@ import {
   Users,
   Sparkles,
   Loader2,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,12 +22,22 @@ import {
 } from '@/components/ui/card';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getCountFromServer } from 'firebase/firestore';
+import { collection, query, where, getCountFromServer, getDocs } from 'firebase/firestore';
+import {
+  getFriendActivity,
+  type GetFriendActivityOutput,
+} from '@/ai/flows/get-friend-activity';
+import Image from 'next/image';
+import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 export default function DashboardPage() {
   const [user] = useAuthState(auth);
   const [watchedCount, setWatchedCount] = useState<number | null>(null);
+  const [friendCount, setFriendCount] = useState<number | null>(null);
+  const [friendActivity, setFriendActivity] = useState<GetFriendActivityOutput | null>(null);
+  const [loadingActivity, setLoadingActivity] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -41,9 +52,38 @@ export default function DashboardPage() {
           setWatchedCount(0);
         }
       };
+
+      const getFriendCount = async () => {
+        try {
+          const friendsCol = collection(db, 'users', user.uid, 'friends');
+          const snapshot = await getDocs(friendsCol);
+          setFriendCount(snapshot.size);
+        } catch (error) {
+          console.error("Error fetching friend count: ", error);
+          setFriendCount(0);
+        }
+      }
+
+      const fetchFriendActivity = async () => {
+        setLoadingActivity(true);
+        try {
+          const activity = await getFriendActivity(user.uid);
+          setFriendActivity(activity);
+        } catch (error) {
+          console.error("Error fetching friend activity: ", error);
+          setFriendActivity({ activity: [] });
+        } finally {
+          setLoadingActivity(false);
+        }
+      }
+
       getWatchedCount();
+      getFriendCount();
+      fetchFriendActivity();
     } else {
       setWatchedCount(0);
+      setFriendCount(0);
+      setLoadingActivity(false);
     }
   }, [user]);
 
@@ -56,7 +96,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Friends',
-      value: '12', // This can be made dynamic later
+      value: friendCount,
       icon: Users,
       color: 'text-amber-500',
     },
@@ -125,30 +165,55 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-headline">Recent Activity</CardTitle>
+            <CardTitle className="font-headline">Friend Activity</CardTitle>
             <CardDescription>
-              See what you and your friends have been up to.
+              See what your friends have been watching recently.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <div className="flex items-start gap-3">
-              <Activity className="h-4 w-4 mt-1" />
-              <p>
-                You rated <strong>Inception</strong> 5 stars.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Activity className="h-4 w-4 mt-1" />
-              <p>
-                <strong>Jane Doe</strong> became your friend.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Activity className="h-4 w-4 mt-1" />
-              <p>
-                Your friend <strong>John Smith</strong> rated <strong>The Godfather</strong> 5 stars.
-              </p>
-            </div>
+          <CardContent className="space-y-4">
+             {loadingActivity ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+             ) : !friendActivity || friendActivity.activity.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                    <p>No friend activity yet.</p>
+                    <p className="text-sm">Once your friends watch movies, they'll show up here.</p>
+                </div>
+             ) : (
+                <div className="space-y-4">
+                  {friendActivity.activity.map((item) => (
+                    <div key={`${item.friend.id}-${item.movie.id}`} className="flex items-start gap-4">
+                      <Link href={`/dashboard/friends/${item.friend.id}`}>
+                        <Avatar className="h-10 w-10 border">
+                           <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
+                           <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                        </Avatar>
+                      </Link>
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          <Link href={`/dashboard/friends/${item.friend.id}`} className="font-bold text-foreground hover:underline">{item.friend.displayName}</Link>
+                          {' '}watched{' '}
+                          <Link href={`/dashboard/movies/${item.movie.id}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                           {formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}
+                        </p>
+                      </div>
+                       <Link href={`/dashboard/movies/${item.movie.id}`}>
+                        <Image
+                            src={item.movie.imageUrl}
+                            alt={item.movie.title}
+                            data-ai-hint={item.movie.imageHint}
+                            width={40}
+                            height={60}
+                            className="rounded-sm object-cover aspect-[2/3]"
+                          />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+             )}
           </CardContent>
         </Card>
       </div>
