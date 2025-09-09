@@ -277,7 +277,6 @@ export default function FriendsPage() {
      }
   };
 
-
   return (
     <div className="space-y-8">
       <div>
@@ -341,7 +340,7 @@ export default function FriendsPage() {
                         <Avatar className="h-12 w-12">
                             <AvatarImage src={friend.photoURL} alt={friend.displayName} />
                             <AvatarFallback>
-                            {friend.displayName.charAt(0)}
+                            {friend.displayName?.charAt(0) ?? 'U'}
                             </AvatarFallback>
                         </Avatar>
                         <div className="truncate">
@@ -377,7 +376,7 @@ export default function FriendsPage() {
                                     <Avatar className="h-12 w-12">
                                         <AvatarImage src={request.fromPhotoURL} alt={request.fromName} />
                                         <AvatarFallback>
-                                        {request.fromName.charAt(0)}
+                                        {request.fromName?.charAt(0) ?? 'U'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 truncate">
@@ -406,14 +405,14 @@ export default function FriendsPage() {
                             <CardHeader>
                                 <CardTitle>Sent Requests</CardTitle>
                                 <CardDescription>You've sent these people a friend request.</CardDescription>
-                            </CardHeader>
+                            </Header>
                             <CardContent className="space-y-4">
                                 {sentRequests.map((request) => (
                                 <div key={request.id} className="flex items-center gap-4">
                                     <Avatar className="h-12 w-12">
                                         <AvatarImage src={request.toPhotoURL} alt={request.toName} />
                                         <AvatarFallback>
-                                        {request.toName.charAt(0)}
+                                        {request.toName?.charAt(0) ?? 'U'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex-1 truncate">
@@ -439,5 +438,3 @@ export default function FriendsPage() {
     </div>
   );
 }
-
-    
