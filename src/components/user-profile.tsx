@@ -25,7 +25,9 @@ export function UserProfile() {
   };
 
   if (loading) {
-    return <Skeleton className="h-8 w-8 rounded-full" />;
+    return (
+        <Skeleton className="h-8 w-8 rounded-full" />
+    );
   }
 
   if (!user) {
