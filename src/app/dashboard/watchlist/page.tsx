@@ -182,13 +182,17 @@ export default function WatchlistPage() {
                             
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                     <Badge 
-                                        variant="secondary" 
-                                        className="absolute top-2 right-2 flex items-center gap-1 cursor-pointer hover:bg-destructive/80 hover:text-destructive-foreground"
+                                    <div
+                                        className="absolute top-2 right-2"
                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                     >
-                                        <Bookmark className="h-3 w-3" /> Watchlist
-                                    </Badge>
+                                    >
+                                        <Badge 
+                                            variant="secondary" 
+                                            className="flex items-center gap-1 cursor-pointer hover:bg-destructive/80 hover:text-destructive-foreground"
+                                        >
+                                            <Bookmark className="h-3 w-3" /> Watchlist
+                                        </Badge>
+                                    </div>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                 <AlertDialogHeader>
