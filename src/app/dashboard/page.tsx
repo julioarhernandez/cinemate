@@ -180,18 +180,21 @@ export default function DashboardPage() {
       value: watchedCount,
       icon: Film,
       color: 'text-sky-500',
+      href: '/dashboard/collections',
     },
     {
       title: 'Friends',
       value: friendCount,
       icon: Users,
       color: 'text-amber-500',
+      href: '/dashboard/friends',
     },
     {
       title: 'AI Recommendations',
       value: recommendationCount,
       icon: Sparkles,
       color: 'text-violet-500',
+      href: '/dashboard/ai-recommender',
     },
   ];
 
@@ -208,23 +211,25 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stat.value === null ? (
-                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                ) : (
-                  stat.value
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <Link href={stat.href} key={stat.title}>
+            <Card className="hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {stat.value === null ? (
+                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  ) : (
+                    stat.value
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
