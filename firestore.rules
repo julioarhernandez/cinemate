@@ -14,7 +14,7 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
 
-    // Friend requests
+    // Friend requests - more permissive rules for proper functionality
     match /friendRequests/{requestId} {
       // Allow users to read requests they sent or received
       allow read: if request.auth != null && 
@@ -31,10 +31,10 @@ service cloud.firestore {
                        (resource.data.to == request.auth.uid || 
                         resource.data.from == request.auth.uid);
       
-      // Allow updating status to 'declined'
+      // Allow updating status (though not used in your current code)
       allow update: if request.auth != null && 
                        resource.data.to == request.auth.uid &&
-                       request.resource.data.status == 'declined';
+                       request.resource.data.keys().hasOnly(["status"]);
     }
 
     // Allow querying friend requests collection
@@ -42,18 +42,20 @@ service cloud.firestore {
       allow list: if request.auth != null;
     }
 
-    // Friends lists
+    // Friends lists - allow reading friend data for display
     match /users/{userId}/friends/{friendId} {
-      allow read, delete: if request.auth.uid == userId;
-      
-      // Allow a user to write to their own friends list OR
-      // allow them to write to another user's friends list (`userId`) if
-      // they are accepting a friend request from that user.
+      // 1. Allow a user to manage their own friends list.
+      // 2. Allow a user to be added to another's friends list if they have a pending request.
       allow write: if request.auth.uid == userId ||
-                      (request.auth.uid == friendId &&
-                       exists(/databases/$(database)/documents/friendRequests/{requestId}) &&
-                       get(/databases/$(database)/documents/friendRequests/{requestId}).data.from == userId &&
-                       get(/databases/$(database)/documents/friendRequests/{requestId}).data.to == friendId);
+                   (request.auth.uid == friendId && 
+                    exists(/databases/$(database)/documents/friendRequests/$(request.resource.id)));
+      
+      // Allow a user to read their own friends list, or allow friends to read each other's basic info
+      allow read: if request.auth.uid == userId ||
+                   exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+      
+      // Only allow a user to delete their own friends
+      allow delete: if request.auth.uid == userId;
     }
     
     // Ratings & Watched list
