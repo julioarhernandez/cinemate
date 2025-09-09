@@ -150,18 +150,18 @@ export function MovieSelectionDialog({
               {filteredMovies.map((movie) => {
                 const isSelected = !!selectedMovies[movie.id];
                 return (
-                  <div 
-                    key={movie.id} 
-                    className="relative group cursor-pointer" 
+                  <div
+                    key={movie.id}
+                    className="relative cursor-pointer"
                     onClick={() => handleSelect(movie)}
                   >
                     <div className="absolute top-2 left-2 z-10">
                        <Checkbox
                           checked={isSelected}
-                          className="bg-background/80 group-hover:bg-background"
+                          className="bg-background/80"
                         />
                     </div>
-                    <div 
+                    <div
                         className={cn(
                             "overflow-hidden rounded-md border-2",
                              isSelected ? "border-primary" : "border-transparent"
@@ -172,9 +172,9 @@ export function MovieSelectionDialog({
                         alt={movie.title}
                         width={200}
                         height={300}
-                        className="object-cover w-full h-auto aspect-[2/3] transition-transform duration-300 group-hover:scale-105"
+                        className="object-cover w-full h-auto aspect-[2/3] transition-transform duration-300"
                       />
-                       <div 
+                       <div
                           className={cn(
                             "absolute inset-0 bg-gradient-to-t from-black/80 to-transparent",
                             isSelected && "ring-2 ring-inset ring-primary"
