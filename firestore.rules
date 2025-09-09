@@ -40,35 +40,23 @@ service cloud.firestore {
                        request.resource.data.keys().hasOnly(["status"]);
     }
 
-    // Friends lists
+    // Friends lists - allow reading friend data for display
     match /users/{userId}/friends/{friendId} {
-      allow write: if request.auth.uid == userId ||
-                      (request.auth.uid == friendId && existsAfter(/databases/$(database)/documents/friendRequests/$(request.resource.id)));
+    	allow write: if request.auth.uid == userId || request.auth.uid == friendId;
+  
+  		allow read: if request.auth.uid == userId ||
+               exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
 
-      allow read: if request.auth.uid == userId ||
-                   exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
-
-      allow delete: if request.auth.uid == userId ||
-                       (request.auth.uid == friendId && !existsAfter(/databases/$(database)/documents/users/$(userId)/friends/$(friendId)));
-    }
+  		allow delete: if request.auth.uid == userId;  
+		}
     
     // Ratings & Watched list
     match /users/{userId}/ratings/{ratingId} {
-      // Allow user to read/write their own ratings
-      allow write: if request.auth.uid == userId;
-
-      // Allow reading own ratings, OR friends' public ratings
-      allow read: if request.auth.uid == userId ||
-                   (
-                     exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
-                     resource.data.isPrivate == false
-                   );
-
-      // Allow friends to query public ratings
-      allow list: if exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
-                     request.query.filters.hasAny([
-                       ['isPrivate', '==', false]
-                     ]);
+      // A user can read/write their own ratings.
+      // A user can read a friend's rating only if it is not private.
+      allow read, write: if request.auth.uid == userId;
+      allow read: if exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
+                     resource.data.isPrivate != true;
     }
 
     // AI Recommendations history
