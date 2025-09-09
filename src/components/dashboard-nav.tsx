@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 import { UserProfile } from '@/components/user-profile';
+import { useFriendRequestCount } from '@/hooks/use-friend-request-count';
 
 
 const navItems = [
@@ -43,6 +44,7 @@ const navItems = [
 export function DashboardNav() {
   const pathname = usePathname();
   const { open, setOpen, isMobile } = useSidebar();
+  const friendRequestCount = useFriendRequestCount();
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -81,9 +83,14 @@ export function DashboardNav() {
                 )}
                 tooltip={item.label}
               >
-                <Link href={item.href}>
+                <Link href={item.href} className="relative">
                   <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
+                   {item.href === '/dashboard/friends' && friendRequestCount > 0 && (
+                     <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                        {friendRequestCount}
+                    </span>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

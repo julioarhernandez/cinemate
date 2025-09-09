@@ -19,6 +19,7 @@ import {
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { useFriendRequestCount } from '@/hooks/use-friend-request-count';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,7 @@ interface Friend {
 export default function FriendsPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
+  const friendRequestCount = useFriendRequestCount();
   
   const [searchEmail, setSearchEmail] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -331,9 +333,9 @@ export default function FriendsPage() {
           <TabsTrigger value="friends">My Friends ({friends.length})</TabsTrigger>
           <TabsTrigger value="requests">
             Friend Requests
-            {(incomingRequests.length + sentRequests.length) > 0 && (
+            {friendRequestCount > 0 && (
                 <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                    {incomingRequests.length + sentRequests.length}
+                    {friendRequestCount}
                 </span>
             )}
           </TabsTrigger>
