@@ -63,6 +63,7 @@ function MoviesPageContent() {
     mediaType,
     handleMediaTypeChange,
     handleSearch,
+    resetFilters,
   } = useMovieSearch();
 
   const activeFilterCount = useMemo(() => {
@@ -163,24 +164,27 @@ function MoviesPageContent() {
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
-                <CollapsibleTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "w-full sm:w-auto",
-                        activeFilterCount > 0 && "border-primary text-primary"
-                      )}
-                    >
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        Filters
-                        {activeFilterCount > 0 && (
-                           <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                            {activeFilterCount}
-                           </span>
-                        )}
-                    </Button>
-                </CollapsibleTrigger>
+                <div className="flex items-center gap-2">
+                    <CollapsibleTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "w-full sm:w-auto",
+                            activeFilterCount > 0 && "border-primary text-primary"
+                          )}
+                        >
+                            <ListFilter className="mr-2 h-4 w-4" />
+                            Filters
+                            {activeFilterCount > 0 && (
+                               <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                                {activeFilterCount}
+                               </span>
+                            )}
+                        </Button>
+                    </CollapsibleTrigger>
+                    {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset</Button>}
+                </div>
               <CollapsibleContent ref={filtersRef} className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
                 <div className="rounded-lg border p-4 bg-background space-y-4 w-[280px]">
                     <div className="space-y-2">

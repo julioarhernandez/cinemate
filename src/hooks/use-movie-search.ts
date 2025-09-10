@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { searchMovies, type SearchMoviesInput } from '@/ai/flows/search-movies';
 import { useToast } from '@/hooks/use-toast';
 import { type MediaItem } from '@/lib/movies';
-import { useDebounce } from './use-debounce';
 
 
 const SESSION_STORAGE_KEY = 'mediaSearchState';
@@ -42,7 +41,6 @@ export function useMovieSearch() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   
-  const debouncedYear = useDebounce(year, 500);
 
   const runSearch = useCallback(async (options: {
     query?: string;
@@ -259,6 +257,15 @@ export function useMovieSearch() {
     }
   };
 
+  const resetFilters = useCallback(() => {
+    setYear('');
+    setSelectedGenres([]);
+    setSortBy('popularity.desc');
+    // We don't reset searchTerm here, only filters.
+    // Immediately trigger a new search with the cleared filters.
+    handleSearch();
+  }, [handleSearch]);
+
 
   return {
     searchTerm,
@@ -283,5 +290,6 @@ export function useMovieSearch() {
     isInitialized,
     handleMediaTypeChange,
     handleSearch,
+    resetFilters,
   };
 }
