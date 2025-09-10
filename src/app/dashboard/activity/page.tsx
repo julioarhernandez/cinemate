@@ -37,14 +37,10 @@ export default function ActivityPage() {
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
   const [timeRange, setTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
-  console.log('[Activity Page] Component rendered. Auth loading:', authLoading, 'User:', user ? user.uid : 'No user');
-
   const fetchFriends = useCallback(async () => {
     if (!user) return;
-    console.log('[Activity Page] Step 3a: fetchFriends called.');
     try {
       const friendsResult = await getFriends({ userId: user.uid });
-      console.log('[Activity Page] Step 3b: Fetched friends list:', friendsResult);
       setFriends(friendsResult.friends);
     } catch (error) {
       console.error("Failed to fetch friends:", error);
@@ -54,14 +50,12 @@ export default function ActivityPage() {
 
   const fetchActivity = useCallback(async () => {
     if (!user) return;
-    console.log('[Activity Page] Step 4a: fetchActivity called for friend:', selectedFriend);
     setLoading(true);
     try {
       const activityResult = await getFriendActivity({
         userId: user.uid,
         friendId: selectedFriend === 'all' ? undefined : selectedFriend,
       });
-      console.log('[Activity Page] Step 4b: Fetched activity:', activityResult);
       setActivity(activityResult.activity);
     } catch (error) {
       console.error("Failed to fetch activity:", error);
@@ -73,12 +67,8 @@ export default function ActivityPage() {
   }, [user, selectedFriend, toast]);
   
   useEffect(() => {
-    console.log('[Activity Page] Step 1: useEffect triggered. User available:', !!user);
     if (user) {
-        console.log('[Activity Page] Step 2: User is available, calling fetchFriends and fetchActivity.');
         fetchFriends();
-    } else {
-        console.log('[Activity Page] Step 2: User not yet available. Waiting...');
     }
     // This effect should only run when the user object is first available.
   }, [user, fetchFriends]);
