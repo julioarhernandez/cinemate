@@ -52,6 +52,7 @@ export async function searchMovies(
   const params = new URLSearchParams({
     api_key: process.env.TMDB_API_KEY,
     page: page.toString(),
+    include_adult: 'false',
   });
 
   const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
