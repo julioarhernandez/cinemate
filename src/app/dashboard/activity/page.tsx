@@ -8,7 +8,7 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { Loader2, Star, ListFilter } from 'lucide-react';
+import { Loader2, Star, ListFilter, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -20,6 +20,12 @@ import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface User {
   id: string;
@@ -43,7 +49,7 @@ export default function ActivityPage() {
   const { toast } = useToast();
 
   // Filter states
-  const [selectedFriend, setSelectedFriend] = useState<'all' | string>('all');
+  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
   const [timeRange, setTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
@@ -55,21 +61,24 @@ export default function ActivityPage() {
     setLoading(true);
 
     try {
-      // 1. Get the user's friends
-      const friendsRef = collection(db, 'users', user.uid, 'friends');
-      const friendsSnapshot = await getDocs(friendsRef);
-      const fetchedFriends = friendsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as { displayName: string; photoURL?: string }),
-      }));
-      setFriends(fetchedFriends);
-
-      let friendsToQuery = fetchedFriends;
-      if (selectedFriend !== 'all') {
-        friendsToQuery = fetchedFriends.filter(f => f.id === selectedFriend);
+      // 1. Get the user's friends list if we don't have it
+      let fetchedFriends = friends;
+      if (friends.length === 0) {
+        const friendsRef = collection(db, 'users', user.uid, 'friends');
+        const friendsSnapshot = await getDocs(friendsRef);
+        fetchedFriends = friendsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as { displayName: string; photoURL?: string }),
+        }));
+        setFriends(fetchedFriends);
       }
 
-      if (friendsToQuery.length === 0) {
+      let friendsToQuery = fetchedFriends;
+      if (selectedFriends.length > 0) {
+        friendsToQuery = fetchedFriends.filter(f => selectedFriends.includes(f.id));
+      }
+
+      if (friendsToQuery.length === 0 && selectedFriends.length > 0) {
         setActivity([]);
         setLoading(false);
         return;
@@ -147,13 +156,13 @@ export default function ActivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedFriend, toast]);
+  }, [user, selectedFriends, toast, friends]);
 
   useEffect(() => {
     if (user) {
       fetchFriendsAndActivity();
     }
-  }, [user, selectedFriend, fetchFriendsAndActivity]);
+  }, [user, selectedFriends, fetchFriendsAndActivity]);
 
 
   const filteredActivity = useMemo(() => {
@@ -182,6 +191,16 @@ export default function ActivityPage() {
     });
   }, [activity, ratingRange, timeRange]);
 
+  const handleFriendSelect = (friendId: string) => {
+    setSelectedFriends(prev => {
+        if (prev.includes(friendId)) {
+            return prev.filter(id => id !== friendId);
+        } else {
+            return [...prev, friendId];
+        }
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -198,17 +217,40 @@ export default function ActivityPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                  <div className="space-y-2">
                     <Label htmlFor="friend-filter">Friend</Label>
-                    <Select value={selectedFriend} onValueChange={setSelectedFriend}>
-                        <SelectTrigger id="friend-filter">
-                            <SelectValue placeholder="Select a friend" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Friends</SelectItem>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between"
+                            >
+                                <span className="truncate">
+                                    {selectedFriends.length === 0 && 'All Friends'}
+                                    {selectedFriends.length === 1 && friends.find(f => f.id === selectedFriends[0])?.displayName}
+                                    {selectedFriends.length > 1 && `${selectedFriends.length} friends selected`}
+                                </span>
+                                {selectedFriends.length > 0 && (
+                                    <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setSelectedFriends([])}}/>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                           <ScrollArea className="max-h-60">
+                            <div className="p-2">
                             {friends.map(friend => (
-                                <SelectItem key={friend.id} value={friend.id}>{friend.displayName}</SelectItem>
+                                <div key={friend.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent" onClick={() => handleFriendSelect(friend.id)}>
+                                    <Checkbox
+                                        id={`friend-${friend.id}`}
+                                        checked={selectedFriends.includes(friend.id)}
+                                        onCheckedChange={() => handleFriendSelect(friend.id)}
+                                    />
+                                    <Label htmlFor={`friend-${friend.id}`} className="font-normal flex-1 cursor-pointer">{friend.displayName}</Label>
+                                </div>
                             ))}
-                        </SelectContent>
-                    </Select>
+                            </div>
+                           </ScrollArea>
+                        </PopoverContent>
+                    </Popover>
                 </div>
                  <div className="space-y-2">
                     <Label>Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
@@ -293,3 +335,5 @@ export default function ActivityPage() {
     </div>
   );
 }
+
+    
