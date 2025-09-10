@@ -137,20 +137,14 @@ export const movies: MediaItem[] = [
 
   export const languages: { iso_639_1: string; english_name: string; name: string }[] = [
     { iso_639_1: "en-US", english_name: "English (US)", name: "English" },
-    { iso_639_1: "en-GB", english_name: "English (UK)", name: "English" },
     { iso_639_1: "es-ES", english_name: "Spanish (Spain)", name: "Español" },
-    { iso_639_1: "es-MX", english_name: "Spanish (Mexico)", name: "Español" },
     { iso_639_1: "fr-FR", english_name: "French (France)", name: "Français" },
-    { iso_639_1: "fr-CA", english_name: "French (Canada)", name: "Français" },
     { iso_639_1: "de-DE", english_name: "German", name: "Deutsch" },
     { iso_639_1: "it-IT", english_name: "Italian", name: "Italiano" },
     { iso_639_1: "ja-JP", english_name: "Japanese", name: "日本語" },
     { iso_639_1: "ko-KR", english_name: "Korean", name: "한국어/조선말" },
     { iso_639_1: "pt-BR", english_name: "Portuguese (Brazil)", name: "Português" },
-    { iso_639_1: "pt-PT", english_name: "Portuguese (Portugal)", name: "Português" },
     { iso_639_1: "ru-RU", english_name: "Russian", name: "Pусский" },
-    { iso_639_1: "zh-CN", english_name: "Chinese (Simplified)", name: "普通话" },
-    { iso_639_1: "zh-TW", english_name: "Chinese (Traditional)", name: "普通话" },
     { iso_639_1: "hi-IN", english_name: "Hindi", name: "हिन्दी" },
     { iso_639_1: "ar-SA", english_name: "Arabic", name: "العربية" },
 ];
