@@ -32,6 +32,7 @@ interface UserMovieData {
   watched?: boolean;
   rating?: number;
   isPrivate?: boolean;
+  mediaType?: 'movie' | 'tv';
 }
 
 type UserRatings = Record<string, UserMovieData>;
@@ -48,6 +49,7 @@ export default function CollectionsPage() {
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
   const [yearRange, setYearRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,13 +62,15 @@ export default function CollectionsPage() {
     if (ratingRange[0] !== 0 || ratingRange[1] !== 10) count++;
     if (yearRange.start || yearRange.end) count++;
     if (selectedGenres.length > 0) count++;
+    if (mediaTypeFilter !== 'all') count++;
     return count;
-  }, [ratingRange, yearRange, selectedGenres]);
+  }, [ratingRange, yearRange, selectedGenres, mediaTypeFilter]);
 
   const resetFilters = () => {
     setRatingRange([0, 10]);
     setYearRange({ start: '', end: '' });
     setSelectedGenres([]);
+    setMediaTypeFilter('all');
     setCurrentPage(1);
   };
 
@@ -79,18 +83,22 @@ export default function CollectionsPage() {
         const snapshot = await getDocs(q);
         
         const ratings: UserRatings = {};
-        const movieIds: number[] = [];
+        const mediaItems: { id: number; mediaType: 'movie' | 'tv' }[] = [];
         snapshot.forEach((doc) => {
-            movieIds.push(parseInt(doc.id));
-            ratings[doc.id] = doc.data() as UserMovieData;
+            const data = doc.data() as UserMovieData;
+            mediaItems.push({
+                id: parseInt(doc.id),
+                mediaType: data.mediaType || 'movie',
+            });
+            ratings[doc.id] = data;
         });
         setUserRatings(ratings);
         
-        const moviePromises = movieIds.map(id => getMovieDetails({ id }));
+        const moviePromises = mediaItems.map(item => getMovieDetails({ id: item.id, mediaType: item.mediaType }));
         const moviesData = await Promise.all(moviePromises);
         
         const fetchedMovies = moviesData
-          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Movie' && !!m.id && m.id !== 0);
+          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Media' && !!m.id && m.id !== 0);
 
         setMovies(fetchedMovies);
 
@@ -132,9 +140,14 @@ export default function CollectionsPage() {
             return false;
         }
 
+        // Media Type filter
+        if (mediaTypeFilter !== 'all' && movie.mediaType !== mediaTypeFilter) {
+          return false;
+        }
+
         // Rating range filter (on user rating)
         const movieUserRating = movie.userRating ?? -1;
-        if (movieUserRating !== -1 && (movieUserRating < ratingRange[0] || movieUserRating > ratingRange[1])) {
+        if (movieUserRating !== -1 && (ratingRange[0] !== 0 || ratingRange[1] !== 10) && (movieUserRating < ratingRange[0] || movieUserRating > ratingRange[1])) {
           return false;
         }
 
@@ -156,7 +169,7 @@ export default function CollectionsPage() {
 
         return true;
       });
-  }, [movies, userRatings, searchTerm, ratingRange, yearRange, selectedGenres]);
+  }, [movies, userRatings, searchTerm, ratingRange, yearRange, selectedGenres, mediaTypeFilter]);
 
   const paginatedMovies = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
@@ -170,7 +183,7 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, ratingRange, yearRange, selectedGenres, pageSize]);
+  }, [searchTerm, ratingRange, yearRange, selectedGenres, pageSize, mediaTypeFilter]);
 
 
   if (authLoading) {
@@ -184,7 +197,7 @@ export default function CollectionsPage() {
           My Collection
         </h1>
         <p className="text-muted-foreground">
-          Browse, search, and filter the movies you've watched.
+          Browse, search, and filter the media you've watched.
         </p>
       </div>
 
@@ -213,6 +226,20 @@ export default function CollectionsPage() {
                 </div>
               <CollapsibleContent className="mt-4 animate-in fade-in-0 zoom-in-95">
                 <div className="rounded-lg border p-4 space-y-6">
+                    {/* Media Type Filter */}
+                     <div className="space-y-2">
+                        <Label>Media Type</Label>
+                        <Select value={mediaTypeFilter} onValueChange={(value) => setMediaTypeFilter(value as 'all' | 'movie' | 'tv')}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select media type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Media</SelectItem>
+                                <SelectItem value="movie">Movies</SelectItem>
+                                <SelectItem value="tv">TV Shows</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     
                     {/* Rating Filter */}
                     <div className="space-y-2">
@@ -242,13 +269,13 @@ export default function CollectionsPage() {
                             <PopoverContent className="w-auto p-0" align="start">
                                <div className="p-4 grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
                                 {allGenres.map(genre => (
-                                    <div key={genre} className="flex items-center space-x-2">
-                                        <Checkbox id={`genre-${genre}`} checked={selectedGenres.includes(genre)} onCheckedChange={(checked) => {
+                                    <div key={genre.name} className="flex items-center space-x-2">
+                                        <Checkbox id={`genre-${genre.name}`} checked={selectedGenres.includes(genre.name)} onCheckedChange={(checked) => {
                                             return checked
-                                                ? setSelectedGenres([...selectedGenres, genre])
-                                                : setSelectedGenres(selectedGenres.filter(g => g !== genre));
+                                                ? setSelectedGenres([...selectedGenres, genre.name])
+                                                : setSelectedGenres(selectedGenres.filter(g => g !== genre.name));
                                         }} />
-                                        <Label htmlFor={`genre-${genre}`} className="font-normal">{genre}</Label>
+                                        <Label htmlFor={`genre-${genre.name}`} className="font-normal">{genre.name}</Label>
                                     </div>
                                 ))}
                                 </div>
@@ -263,7 +290,7 @@ export default function CollectionsPage() {
             </Collapsible>
             <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(parseInt(value))}>
                 <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Movies per page" />
+                    <SelectValue placeholder="Items per page" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="10">10 per page</SelectItem>
@@ -284,19 +311,29 @@ export default function CollectionsPage() {
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">Your collection is empty</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              Start by browsing movies and marking them as watched.
+              Start by browsing movies and TV shows and marking them as watched.
             </p>
             <Button asChild className="mt-4">
-              <Link href="/dashboard/movies">Browse Movies</Link>
+              <Link href="/dashboard/movies">Browse Media</Link>
             </Button>
           </div>
       )}
+      
+      {!loading && movies.length > 0 && filteredMovies.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
+            <h3 className="text-xl font-bold tracking-tight">No Results Found</h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Your filters did not match any items in your collection.
+            </p>
+            <Button variant="outline" className="mt-4" onClick={resetFilters}>Reset Filters</Button>
+          </div>
+      )}
 
-      {!loading && movies.length > 0 && (
+      {!loading && paginatedMovies.length > 0 && (
         <>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {paginatedMovies.map((movie) => (
-                <Link href={`/dashboard/movies/${movie.id}`} key={movie.id}>
+                <Link href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`} key={`${movie.id}-${movie.mediaType}`}>
                     <Card className="group overflow-hidden h-full">
                     <CardHeader className="p-0">
                         <div className="relative h-60 overflow-hidden">
@@ -309,7 +346,7 @@ export default function CollectionsPage() {
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <Badge variant="secondary" className="absolute bottom-2 left-2">{movie.genre}</Badge>
+                        <Badge variant={movie.mediaType === 'tv' ? 'destructive' : 'secondary'} className="absolute bottom-2 left-2">{movie.mediaType === 'tv' ? 'TV' : 'Movie'}</Badge>
                         {movie.isPrivate ? (
                             <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1">
                                 <EyeOff className="h-3 w-3"/> Private
@@ -339,7 +376,7 @@ export default function CollectionsPage() {
              <div className="flex items-center justify-between pt-4">
                 <p className="text-sm text-muted-foreground">
                     {totalPages > 0 ? `Page ${currentPage} of ${totalPages} ` : ''}
-                    ({filteredMovies.length} movie{filteredMovies.length === 1 ? '' : 's'})
+                    ({filteredMovies.length} item{filteredMovies.length === 1 ? '' : 's'})
                 </p>
                 <div className="flex items-center gap-2">
                     <Button
@@ -364,3 +401,5 @@ export default function CollectionsPage() {
     </div>
   );
 }
+
+    
