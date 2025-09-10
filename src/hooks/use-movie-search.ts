@@ -42,7 +42,7 @@ export function useMovieSearch() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const debouncedYear = useDebounce(year, 500);
 
   const runSearch = useCallback(async (options: {
     query?: string;
@@ -170,14 +170,18 @@ export function useMovieSearch() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
   }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType]);
   
-
-  // Effect to run search when filters change, but not on initial load
+  // Effect to run search when non-text filters change
   useEffect(() => {
     if (!isInitialized) return;
-    
+    handleSearch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedYear, selectedGenres, sortBy, mediaType, isInitialized]);
+
+
+  const handleSearch = () => {
     // Create a new URLSearchParams object
     const params = new URLSearchParams();
-    if (debouncedSearchTerm) params.set('search', debouncedSearchTerm);
+    if (searchTerm) params.set('search', searchTerm);
     if (year) params.set('year', year);
     if (mediaType) params.set('type', mediaType);
     
@@ -188,7 +192,7 @@ export function useMovieSearch() {
     setPage(1);
     startTransition(() => {
         runSearch({
-            query: debouncedSearchTerm,
+            query: searchTerm,
             year: year,
             genres: selectedGenres,
             sortBy: sortBy,
@@ -197,9 +201,7 @@ export function useMovieSearch() {
             append: false,
         });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, year, selectedGenres, sortBy, isInitialized, mediaType]);
-
+  };
 
   const loadMoreMovies = () => {
     if (!hasMore || loadingMore || loading) return;
@@ -207,7 +209,7 @@ export function useMovieSearch() {
     setPage(nextPage);
     startTransition(() => {
       runSearch({
-        query: debouncedSearchTerm,
+        query: searchTerm,
         year,
         genres: selectedGenres,
         sortBy,
@@ -238,7 +240,6 @@ export function useMovieSearch() {
     if (newMediaType !== mediaType) {
         setMediaType(newMediaType);
         setSearchTerm('');
-        // You might want to reset other filters too, like year or genres
         setYear('');
         setSelectedGenres([]);
         setSortBy('popularity.desc');
@@ -268,5 +269,6 @@ export function useMovieSearch() {
     handleLinkClick,
     isInitialized,
     handleMediaTypeChange,
+    handleSearch,
   };
 }
