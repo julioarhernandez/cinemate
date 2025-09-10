@@ -16,6 +16,8 @@ interface MediaSearchState {
     selectedGenres: string[];
     sortBy: string;
     mediaType: 'movie' | 'tv';
+    language: string;
+    cast: string;
     movies: MediaItem[];
     page: number;
     hasMore: boolean;
@@ -35,6 +37,9 @@ export function useMovieSearch() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('popularity.desc');
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
+  const [language, setLanguage] = useState('');
+  const [cast, setCast] = useState('');
+
   const [movies, setMovies] = useState<MediaItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -48,6 +53,8 @@ export function useMovieSearch() {
     genres?: string[];
     sortBy?: string;
     mediaType: 'movie' | 'tv';
+    language?: string;
+    withCast?: string;
     page: number;
     append?: boolean;
   }) => {
@@ -65,6 +72,8 @@ export function useMovieSearch() {
         page: options.page,
         sortBy: options.sortBy,
         mediaType: options.mediaType,
+        language: options.language,
+        withCast: options.withCast,
       });
 
       if (options.append) {
@@ -115,6 +124,8 @@ export function useMovieSearch() {
             setSelectedGenres(savedState.selectedGenres || []);
             setSortBy(savedState.sortBy || 'popularity.desc');
             setMediaType(savedState.mediaType || 'movie');
+            setLanguage(savedState.language || '');
+            setCast(savedState.cast || '');
             setMovies(savedState.movies || []);
             setPage(savedState.page || 1);
             setHasMore(savedState.hasMore === undefined ? true : savedState.hasMore);
@@ -138,6 +149,8 @@ export function useMovieSearch() {
         setSelectedGenres([]);
         setSortBy('popularity.desc');
         setMediaType(newMediaType);
+        setLanguage('');
+        setCast('');
         setPage(1);
         
         startTransition(() => {
@@ -166,13 +179,15 @@ export function useMovieSearch() {
         selectedGenres,
         sortBy,
         mediaType,
+        language,
+        cast,
         movies,
         page,
         hasMore,
         scrollPosition: window.scrollY
     };
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType]);
+  }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType, language, cast]);
   
 
   const handleSearch = () => {
@@ -184,6 +199,8 @@ export function useMovieSearch() {
             genres: selectedGenres,
             sortBy: sortBy,
             mediaType: mediaType,
+            language: language,
+            withCast: cast,
             page: 1,
             append: false,
         });
@@ -201,6 +218,8 @@ export function useMovieSearch() {
         genres: selectedGenres,
         sortBy,
         mediaType,
+        language,
+        withCast: cast,
         page: nextPage,
         append: true,
       });
@@ -215,6 +234,8 @@ export function useMovieSearch() {
         selectedGenres,
         sortBy,
         mediaType,
+        language,
+        cast,
         movies,
         page,
         hasMore,
@@ -231,6 +252,8 @@ export function useMovieSearch() {
         setSearchTerm('');
         setYear('');
         setSelectedGenres([]);
+        setLanguage('');
+        setCast('');
         setSortBy('popularity.desc');
         setMovies([]);
         setHasMore(true);
@@ -250,8 +273,8 @@ export function useMovieSearch() {
   const resetFilters = useCallback(() => {
     setYear('');
     setSelectedGenres([]);
-    // Do not reset sort by
-    // Do not reset search term
+    setLanguage('');
+    setCast('');
     
     // Immediately trigger a new search with the cleared filters.
     setPage(1);
@@ -262,6 +285,8 @@ export function useMovieSearch() {
             genres: [],
             sortBy: sortBy,
             mediaType: mediaType,
+            language: '',
+            withCast: '',
             page: 1,
             append: false,
         });
@@ -280,6 +305,10 @@ export function useMovieSearch() {
     setSortBy,
     mediaType,
     setMediaType,
+    language,
+    setLanguage,
+    cast,
+    setCast,
     movies,
     page,
     setPage,

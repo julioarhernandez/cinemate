@@ -19,12 +19,29 @@ import { movies as defaultMovies, type MediaItem } from '@/lib/movies';
 
 export type {SearchMoviesInput, SearchMoviesOutput};
 
+async function getPersonId(name: string): Promise<string | null> {
+    if (!name.trim()) return null;
+    const url = `https://api.themoviedb.org/3/search/person?api_key=${process.env.TMDB_API_KEY}&query=${encodeURIComponent(name)}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+            return data.results[0].id.toString();
+        }
+        return null;
+    } catch (error) {
+        console.error('Failed to fetch person ID:', error);
+        return null;
+    }
+}
+
 
 export async function searchMovies(
   input: SearchMoviesInput
 ): Promise<SearchMoviesOutput> {
   const validatedInput = SearchMoviesInputSchema.parse(input);
-  const { query, year, genres, page = 1, sortBy = 'popularity.desc', mediaType = 'movie' } = validatedInput;
+  const { query, year, genres, page = 1, sortBy = 'popularity.desc', mediaType = 'movie', language, withCast: castName } = validatedInput;
 
   if (!process.env.TMDB_API_KEY) {
     console.error('TMDB_API_KEY is not set. Returning default movies.');
@@ -62,6 +79,15 @@ export async function searchMovies(
     }
      if (genres && genres.length > 0) {
       params.append('with_genres', genres.join(','));
+    }
+    if (language) {
+      params.append('with_original_language', language);
+    }
+    if (castName) {
+        const personId = await getPersonId(castName);
+        if (personId) {
+            params.append('with_cast', personId);
+        }
     }
   }
   

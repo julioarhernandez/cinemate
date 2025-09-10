@@ -53,6 +53,10 @@ function MoviesPageContent() {
     setSelectedGenres,
     sortBy,
     setSortBy,
+    language,
+    setLanguage,
+    cast,
+    setCast,
     movies,
     loading,
     loadingMore,
@@ -70,8 +74,10 @@ function MoviesPageContent() {
     let count = 0;
     if (year) count++;
     if (selectedGenres.length > 0) count++;
+    if (language) count++;
+    if (cast) count++;
     return count;
-  }, [year, selectedGenres]);
+  }, [year, selectedGenres, language, cast]);
 
   useEffect(() => {
     async function fetchUserRatings() {
@@ -196,6 +202,16 @@ function MoviesPageContent() {
                         <div className="space-y-2">
                             <Label>Release Year</Label>
                             <Input placeholder="e.g., 2024" value={year} onChange={e => setYear(e.target.value)} />
+                        </div>
+
+                         <div className="space-y-2">
+                            <Label>Original Language</Label>
+                            <Input placeholder="en" value={language} onChange={e => setLanguage(e.target.value)} />
+                        </div>
+
+                         <div className="space-y-2">
+                            <Label>Cast Member</Label>
+                            <Input placeholder="e.g., Tom Hanks" value={cast} onChange={e => setCast(e.target.value)} />
                         </div>
 
                         <div className="space-y-2">

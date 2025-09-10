@@ -26,6 +26,8 @@ export const SearchMoviesInputSchema = z.object({
   page: z.number().optional().describe('The page number of results to fetch.'),
   sortBy: z.string().optional().describe('The sorting preference for results.'),
   mediaType: z.enum(['movie', 'tv']).default('movie').optional(),
+  language: z.string().optional().describe('Filter by original language (ISO 639-1 code).'),
+  withCast: z.string().optional().describe('A comma-separated string of person IDs to include.'),
 });
 export type SearchMoviesInput = z.infer<typeof SearchMoviesInputSchema>;
 
