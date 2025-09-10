@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Loader2, Star, ListFilter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -19,11 +19,22 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { User } from '@/ai/schemas/user-schemas';
-import type { FriendActivityItem } from '@/ai/schemas/friend-activity-schemas';
-import { getFriends } from '@/ai/flows/get-friends';
-import { getFriendActivity } from '@/ai/flows/get-friend-activity';
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 
+interface User {
+  id: string;
+  displayName?: string;
+  photoURL?: string;
+}
+
+interface FriendActivityItem {
+  friend: User;
+  movie: MovieDetailsOutput;
+  rating: number;
+  watchedAt: Timestamp;
+  notes?: string;
+}
 
 export default function ActivityPage() {
   const [user, authLoading] = useAuthState(auth);
@@ -37,30 +48,96 @@ export default function ActivityPage() {
   const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
   const [timeRange, setTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
-  const fetchFriends = useCallback(async () => {
-    if (!user) return;
-    try {
-      const friendsResult = await getFriends({ userId: user.uid });
-      setFriends(friendsResult.friends);
-    } catch (error) {
-      console.error("Failed to fetch friends:", error);
-      toast({ variant: 'destructive', title: 'Could not load friends list.' });
-    }
-  }, [user, toast]);
-
-  const fetchActivity = useCallback(async () => {
+  const fetchFriendsAndActivity = useCallback(async () => {
     if (!user) {
-        setLoading(false);
-        setActivity([]);
-        return;
-    };
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+
     try {
-      const activityResult = await getFriendActivity({
-        userId: user.uid,
-        friendId: selectedFriend === 'all' ? undefined : selectedFriend,
+      // 1. Get the user's friends
+      const friendsRef = collection(db, 'users', user.uid, 'friends');
+      const friendsSnapshot = await getDocs(friendsRef);
+      const fetchedFriends = friendsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as { displayName: string; photoURL?: string }),
+      }));
+      setFriends(fetchedFriends);
+
+      let friendsToQuery = fetchedFriends;
+      if (selectedFriend !== 'all') {
+        friendsToQuery = fetchedFriends.filter(f => f.id === selectedFriend);
+      }
+
+      if (friendsToQuery.length === 0) {
+        setActivity([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch recent ratings for all friends in parallel
+      let allRatings: {
+        friend: User;
+        movieId: string;
+        mediaType: 'movie' | 'tv';
+        rating: number;
+        watchedAt: Timestamp;
+        notes?: string;
+      }[] = [];
+
+      const ratingQueries = friendsToQuery.map(async (friend) => {
+        const ratingsRef = collection(db, 'users', friend.id, 'ratings');
+        let q = query(
+          ratingsRef,
+          where('watched', '==', true),
+          where('isPrivate', '!=', true),
+          orderBy('updatedAt', 'desc'),
+          limit(20)
+        );
+        const snapshot = await getDocs(q);
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          allRatings.push({
+            friend,
+            movieId: doc.id,
+            mediaType: data.mediaType || 'movie',
+            rating: data.rating || 0,
+            watchedAt: data.updatedAt,
+            notes: data.notes || '',
+          });
+        });
       });
-      setActivity(activityResult.activity);
+
+      await Promise.all(ratingQueries);
+
+      // 3. Sort all activities by date and take the most recent ones.
+      allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
+      const latestRatings = allRatings.slice(0, 20);
+
+      // 4. Fetch movie details for the latest ratings.
+      const activityWithMovieDetails = await Promise.all(
+        latestRatings.map(async (rating) => {
+          const movieDetails = await getMovieDetails({
+            id: parseInt(rating.movieId, 10),
+            mediaType: rating.mediaType,
+          });
+          if (movieDetails && movieDetails.title !== 'Unknown Media') {
+            return {
+              friend: rating.friend,
+              movie: movieDetails,
+              rating: rating.rating,
+              watchedAt: rating.watchedAt,
+              notes: rating.notes,
+            };
+          }
+          return null;
+        })
+      );
+      
+      const finalActivity = activityWithMovieDetails.filter((item): item is FriendActivityItem => item !== null);
+      setActivity(finalActivity);
+
     } catch (error) {
       console.error("Failed to fetch activity:", error);
       toast({ variant: 'destructive', title: 'Could not load friend activity.' });
@@ -70,19 +147,11 @@ export default function ActivityPage() {
     }
   }, [user, selectedFriend, toast]);
 
-  // Effect to fetch the initial list of friends
   useEffect(() => {
     if (user) {
-        fetchFriends();
+      fetchFriendsAndActivity();
     }
-  }, [user, fetchFriends]);
-
-  // Effect to fetch activity whenever the selected friend filter changes
-  useEffect(() => {
-    if (user) {
-        fetchActivity();
-    }
-  }, [user, selectedFriend, fetchActivity]);
+  }, [user, selectedFriend, fetchFriendsAndActivity]);
 
 
   const filteredActivity = useMemo(() => {
