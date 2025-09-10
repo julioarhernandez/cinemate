@@ -244,12 +244,9 @@ function MoviesPageContent() {
                                             {allLanguages.map((lang) => (
                                                 <CommandItem
                                                 key={lang.iso_639_1}
-                                                value={lang.english_name}
+                                                value={lang.iso_639_1}
                                                 onSelect={(currentValue) => {
-                                                    const selectedLang = allLanguages.find(l => l.english_name.toLowerCase() === currentValue.toLowerCase());
-                                                    if (selectedLang) {
-                                                        setLanguage(selectedLang.iso_639_1 === language ? "" : selectedLang.iso_639_1);
-                                                    }
+                                                    setLanguage(currentValue === language ? "" : currentValue);
                                                     setLanguagePopoverOpen(false);
                                                 }}
                                                 >
