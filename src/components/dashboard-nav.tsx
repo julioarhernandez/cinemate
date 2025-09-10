@@ -11,6 +11,7 @@ import {
   Users,
   Library,
   Bookmark,
+  Activity,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ const navItems = [
   { href: '/dashboard/collections', icon: Library, label: 'My Collection' },
   { href: '/dashboard/watchlist', icon: Bookmark, label: 'Watchlist' },
   { href: '/dashboard/friends', icon: Users, label: 'Friends' },
+  { href: '/dashboard/activity', icon: Activity, label: 'Friend Activity' },
   {
     href: '/dashboard/ai-recommender',
     icon: Bot,
@@ -76,11 +78,11 @@ export function DashboardNav() {
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === item.href}
+                isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
                 onClick={handleLinkClick}
                 className={cn(
                   'justify-start',
-                  pathname === item.href &&
+                   (pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')) &&
                     'bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary dark:bg-primary/20 dark:text-white'
                 )}
                 tooltip={item.label}

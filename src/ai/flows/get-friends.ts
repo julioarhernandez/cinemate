@@ -1,2 +1,70 @@
 
-    
+'use server';
+/**
+ * @fileOverview A Genkit flow for retrieving a user's friends list.
+ *
+ * This file defines the logic to fetch all friends for a given user from the
+ * Firestore database.
+ *
+ * @exports {getFriends} - The main function to fetch the friends list.
+ * @exports {GetFriendsInput} - The Zod schema for the input of the getFriends function.
+ * @exports {GetFriendsOutput} - The Zod schema for the output of the getFriends function.
+ */
+
+import { z } from 'zod';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { UserSchema, type User } from '@/ai/schemas/user-schemas';
+
+
+// Define the input schema for the flow
+export const GetFriendsInputSchema = z.object({
+  userId: z.string().describe("The ID of the user whose friends are being requested."),
+});
+export type GetFriendsInput = z.infer<typeof GetFriendsInputSchema>;
+
+
+// Define the output schema for the flow
+export const GetFriendsOutputSchema = z.object({
+  friends: z.array(UserSchema),
+});
+export type GetFriendsOutput = z.infer<typeof GetFriendsOutputSchema>;
+
+
+/**
+ * Fetches a list of friends for a given user.
+ * @param input - The input containing the userId.
+ * @returns A promise that resolves to the list of friends.
+ */
+export async function getFriends(input: GetFriendsInput): Promise<GetFriendsOutput> {
+  const { userId } = input;
+  
+  if (!userId) {
+    console.error("getFriends failed: userId is missing.");
+    return { friends: [] };
+  }
+
+  try {
+    const friendsRef = collection(db, 'users', userId, 'friends');
+    const snapshot = await getDocs(friendsRef);
+
+    if (snapshot.empty) {
+      return { friends: [] };
+    }
+
+    const friends = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            displayName: data.displayName || 'Unknown Name',
+            email: data.email || 'No email',
+            photoURL: data.photoURL || '',
+        };
+    });
+
+    return { friends };
+  } catch (error) {
+    console.error(`Error fetching friends for user ${userId}:`, error);
+    return { friends: [] };
+  }
+}
