@@ -88,24 +88,27 @@ export default function ActivityPage() {
 
       const ratingQueries = friendsToQuery.map(async (friend) => {
         const ratingsRef = collection(db, 'users', friend.id, 'ratings');
-        let q = query(
+        // Simplified query to avoid needing a composite index
+        const q = query(
           ratingsRef,
           where('watched', '==', true),
-          where('isPrivate', '!=', true),
           orderBy('updatedAt', 'desc'),
           limit(20)
         );
         const snapshot = await getDocs(q);
         snapshot.forEach((doc) => {
           const data = doc.data();
-          allRatings.push({
-            friend,
-            movieId: doc.id,
-            mediaType: data.mediaType || 'movie',
-            rating: data.rating || 0,
-            watchedAt: data.updatedAt,
-            notes: data.notes || '',
-          });
+          // Filter for public ratings on the client side
+          if (data.isPrivate !== true) {
+            allRatings.push({
+              friend,
+              movieId: doc.id,
+              mediaType: data.mediaType || 'movie',
+              rating: data.rating || 0,
+              watchedAt: data.updatedAt,
+              notes: data.notes || '',
+            });
+          }
         });
       });
 

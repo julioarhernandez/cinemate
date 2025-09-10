@@ -117,15 +117,16 @@ export default function DashboardPage() {
             // Simplified query to avoid composite index requirement
             const q = query(
               ratingsRef,
+              where('watched', '==', true),
               orderBy('updatedAt', 'desc'),
-              limit(20) // Fetch more docs to filter in-app
+              limit(20) 
             );
             const ratingsSnapshot = await getDocs(q);
 
             ratingsSnapshot.forEach((doc) => {
               const data = doc.data();
               // Filter in the code instead of in the query
-              if (data.watched === true && data.isPrivate !== true) {
+              if (data.isPrivate !== true) {
                  allRatings.push({
                     friend: { id: friend.id, displayName: friend.displayName, photoURL: friend.photoURL },
                     movieId: doc.id,
