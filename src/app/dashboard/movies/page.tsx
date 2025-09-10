@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -39,6 +39,8 @@ type UserRatings = Record<string, UserMovieData>;
 function MoviesPageContent() {
   const [user, authLoading] = useAuthState(auth);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   const {
     searchTerm,
@@ -77,6 +79,25 @@ function MoviesPageContent() {
       fetchUserRatings();
     }
   }, [user, authLoading]);
+  
+  // Effect to handle clicks outside the filter menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+        setIsFiltersOpen(false);
+      }
+    }
+
+    if (isFiltersOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFiltersOpen]);
 
   const moviesWithUserData = useMemo(() => {
     return movies.map(movie => {
@@ -131,14 +152,14 @@ function MoviesPageContent() {
         </form>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <Collapsible className="w-full sm:w-auto">
+            <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
                 <CollapsibleTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <ListFilter className="mr-2 h-4 w-4" />
                         Filters
                     </Button>
                 </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
+              <CollapsibleContent ref={filtersRef} className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
                 <div className="rounded-lg border p-4 bg-background space-y-4 w-[280px]">
                     <div className="space-y-2">
                         <Label>Release Year</Label>
