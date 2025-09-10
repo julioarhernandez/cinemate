@@ -208,10 +208,9 @@ function MoviesPageContent() {
                             <Label>Original Language</Label>
                              <Select value={language} onValueChange={setLanguage}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a language" />
+                                    <SelectValue placeholder="Any Language" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Any Language</SelectItem>
                                     {allLanguages.map(lang => (
                                         <SelectItem key={lang.iso_639_1} value={lang.iso_639_1}>
                                             {lang.english_name}
@@ -360,3 +359,5 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
+
+    
