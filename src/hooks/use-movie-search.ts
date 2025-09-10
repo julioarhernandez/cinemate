@@ -155,6 +155,7 @@ export function useMovieSearch() {
         });
     }
     setIsInitialized(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // This effect should only run once on component mount
 
   
@@ -175,13 +176,6 @@ export function useMovieSearch() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
   }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType]);
   
-  // Effect to run a new search when filters change, but not on initial load
-  useEffect(() => {
-    if (!isInitialized) return;
-    handleSearch();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedYear, selectedGenres, sortBy]);
-
 
   const handleSearch = () => {
     // Create a new URLSearchParams object
@@ -250,6 +244,10 @@ export function useMovieSearch() {
         setYear('');
         setSelectedGenres([]);
         setSortBy('popularity.desc');
+        setMovies([]);
+        setHasMore(true);
+        setPage(1);
+        
         // Trigger a new search for the new media type
         startTransition(() => {
             runSearch({
