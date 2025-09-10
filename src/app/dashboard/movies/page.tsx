@@ -21,7 +21,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { genres as allGenres } from '@/lib/movies';
+import { allGenres, languages as allLanguages } from '@/lib/movies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMovieSearch } from '@/hooks/use-movie-search';
@@ -206,7 +206,19 @@ function MoviesPageContent() {
 
                          <div className="space-y-2">
                             <Label>Original Language</Label>
-                            <Input placeholder="en" value={language} onChange={e => setLanguage(e.target.value)} />
+                             <Select value={language} onValueChange={setLanguage}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">Any Language</SelectItem>
+                                    {allLanguages.map(lang => (
+                                        <SelectItem key={lang.iso_639_1} value={lang.iso_639_1}>
+                                            {lang.english_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                          <div className="space-y-2">
