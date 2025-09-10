@@ -49,16 +49,20 @@ export default function WatchlistPage() {
         const q = query(ratingsCollection, where('watchlist', '==', true));
         const snapshot = await getDocs(q);
         
-        const movieIds: number[] = [];
+        const mediaItems: { id: number; mediaType: 'movie' | 'tv' }[] = [];
         snapshot.forEach((doc) => {
-            movieIds.push(parseInt(doc.id));
+            const data = doc.data();
+            mediaItems.push({
+                id: parseInt(doc.id),
+                mediaType: data.mediaType || 'movie', // Default to movie if not specified
+            });
         });
         
-        const moviePromises = movieIds.map(id => getMovieDetails({ id }));
+        const moviePromises = mediaItems.map(item => getMovieDetails({ id: item.id, mediaType: item.mediaType }));
         const moviesData = await Promise.all(moviePromises);
         
         const fetchedMovies = moviesData
-          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Movie' && !!m.id && m.id !== 0);
+          .filter((m): m is MovieDetailsOutput & {id: number} => !!m && !!m.title && m.title !== 'Unknown Media' && !!m.id && m.id !== 0);
 
         setMovies(fetchedMovies);
 
@@ -93,7 +97,7 @@ export default function WatchlistPage() {
         setMovies(prevMovies => prevMovies.filter(m => m.id !== movieId));
 
         toast({
-            title: 'Movie removed from watchlist.',
+            title: 'Removed from watchlist.',
         });
 
     } catch (error) {
@@ -101,7 +105,7 @@ export default function WatchlistPage() {
         toast({
             variant: 'destructive',
             title: 'Update Failed',
-            description: 'Could not remove the movie from your watchlist.',
+            description: 'Could not remove the item from your watchlist.',
         });
     }
   };
@@ -122,7 +126,7 @@ export default function WatchlistPage() {
           My Watchlist
         </h1>
         <p className="text-muted-foreground">
-          Movies you want to watch later.
+          Movies and TV shows you want to watch later.
         </p>
       </div>
 
@@ -144,9 +148,9 @@ export default function WatchlistPage() {
 
       {!loading && movies.length > 0 && filteredMovies.length === 0 && (
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
-            <h3 className="text-xl font-bold tracking-tight">No movies found</h3>
+            <h3 className="text-xl font-bold tracking-tight">No items found</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              Your search for "{searchTerm}" did not match any movies in your watchlist.
+              Your search for "{searchTerm}" did not match any items in your watchlist.
             </p>
           </div>
       )}
@@ -155,10 +159,10 @@ export default function WatchlistPage() {
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">Your watchlist is empty</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              Browse movies and add them to your watchlist to see them here.
+              Browse for movies and TV shows and add them to your watchlist.
             </p>
             <Button asChild className="mt-4">
-              <Link href="/dashboard/movies">Browse Movies</Link>
+              <Link href="/dashboard/movies">Browse Media</Link>
             </Button>
           </div>
       )}
@@ -166,9 +170,9 @@ export default function WatchlistPage() {
       {!loading && filteredMovies.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {filteredMovies.map((movie) => (
-              <Card key={movie.id} className="group overflow-hidden h-full flex flex-col">
+              <Card key={`${movie.id}-${movie.mediaType}`} className="group overflow-hidden h-full flex flex-col">
                 <div className="relative">
-                  <Link href={`/dashboard/movies/${movie.id}`}>
+                  <Link href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`}>
                     <div className="relative h-60 overflow-hidden">
                       <Image
                           src={movie.imageUrl}
@@ -179,6 +183,9 @@ export default function WatchlistPage() {
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                       <Badge className="absolute top-2 left-2" variant={movie.mediaType === 'tv' ? 'destructive' : 'secondary'}>
+                          {movie.mediaType === 'tv' ? 'TV Show' : 'Movie'}
+                       </Badge>
                     </div>
                   </Link>
 
@@ -214,7 +221,7 @@ export default function WatchlistPage() {
                   </div>
                 </div>
                 
-                <Link href={`/dashboard/movies/${movie.id}`} className="block flex-grow flex flex-col">
+                <Link href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`} className="block flex-grow flex flex-col">
                     <CardContent className="p-3 flex-grow">
                         <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
                         <p className="text-sm text-muted-foreground">{movie.year}</p>
