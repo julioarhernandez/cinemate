@@ -26,29 +26,23 @@ import type { FriendActivityInput, FriendActivityOutput, FriendActivityItem } fr
  */
 export async function getFriendActivity(input: FriendActivityInput): Promise<FriendActivityOutput> {
   const { userId, friendId } = input;
-  console.log(`[getFriendActivity] Starting for userId: ${userId}, friendId: ${friendId || 'all'}`);
   
   let friendsToQuery: User[] = [];
 
   // 1. Determine which friends to query for
   if (friendId) {
-    console.log(`[getFriendActivity] Fetching specific friend: ${friendId}`);
     // If a specific friendId is provided, fetch only that friend's data.
     const friendDocRef = doc(db, 'users', userId, 'friends', friendId);
     const friendDoc = await getDoc(friendDocRef);
     if (friendDoc.exists()) {
       friendsToQuery.push({ id: friendDoc.id, ...friendDoc.data() } as User);
-    } else {
-        console.log(`[getFriendActivity] Friend document for ${friendId} does not exist in user's friends list.`);
     }
   } else {
     // Otherwise, fetch all of the user's friends.
-    console.log(`[getFriendActivity] Fetching all friends for user: ${userId}`);
     const friendsResult = await getFriends({ userId });
     friendsToQuery = friendsResult.friends;
   }
 
-  console.log(`[getFriendActivity] Found ${friendsToQuery.length} friends to query.`);
   // If there are no friends to query, return an empty activity list.
   if (friendsToQuery.length === 0) {
     return { activity: [] };
@@ -76,7 +70,6 @@ export async function getFriendActivity(input: FriendActivityInput): Promise<Fri
         );
         
         const snapshot = await getDocs(q);
-        console.log(`[getFriendActivity] Fetched ${snapshot.size} ratings for friend: ${friend.displayName} (${friend.id})`);
         return { friend, snapshot };
     });
     
@@ -96,7 +89,6 @@ export async function getFriendActivity(input: FriendActivityInput): Promise<Fri
         });
     });
 
-    console.log(`[getFriendActivity] Total ratings collected before sorting: ${allRatings.length}`);
   } catch (error) {
       console.error("[getFriendActivity] Error fetching ratings from Firestore:", error);
       return { activity: [] }; // Return empty on error
@@ -106,7 +98,6 @@ export async function getFriendActivity(input: FriendActivityInput): Promise<Fri
   // 3. Sort all activities by date and take the most recent ones.
   allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
   const latestRatings = allRatings.slice(0, 20);
-  console.log(`[getFriendActivity] Total ratings after sorting and slicing: ${latestRatings.length}`);
 
 
   // 4. Fetch movie details for the latest ratings.
@@ -131,7 +122,6 @@ export async function getFriendActivity(input: FriendActivityInput): Promise<Fri
   
   // 5. Filter out any null results and return the final list.
   const finalActivity = activityWithMovieDetails.filter((item): item is FriendActivityItem => item !== null);
-  console.log(`[getFriendActivity] Final activity count after fetching movie details: ${finalActivity.length}`);
   
   return { activity: finalActivity };
 }

@@ -40,9 +40,7 @@ export default function ActivityPage() {
   const fetchFriends = useCallback(async () => {
     if (!user) return;
     try {
-      console.log('[Activity Page] Fetching friends...');
       const friendsResult = await getFriends({ userId: user.uid });
-      console.log('[Activity Page] Fetched friends list:', friendsResult.friends);
       setFriends(friendsResult.friends);
     } catch (error) {
       console.error("Failed to fetch friends:", error);
@@ -51,9 +49,7 @@ export default function ActivityPage() {
   }, [user, toast]);
 
   const fetchActivity = useCallback(async () => {
-    if (!user || friends.length === 0) {
-        if (!user) console.log('[Activity Page] Skipping fetchActivity: no user.');
-        if (friends.length === 0) console.log('[Activity Page] Skipping fetchActivity: no friends.');
+    if (!user) {
         setLoading(false);
         setActivity([]);
         return;
@@ -72,7 +68,7 @@ export default function ActivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedFriend, toast, friends]);
+  }, [user, selectedFriend, toast]);
 
   // Effect to fetch the initial list of friends
   useEffect(() => {
@@ -81,13 +77,12 @@ export default function ActivityPage() {
     }
   }, [user, fetchFriends]);
 
-  // Effect to fetch activity whenever the selected friend filter changes,
-  // or when the initial friends list is loaded.
+  // Effect to fetch activity whenever the selected friend filter changes
   useEffect(() => {
     if (user) {
         fetchActivity();
     }
-  }, [user, selectedFriend, friends, fetchActivity]);
+  }, [user, selectedFriend, fetchActivity]);
 
 
   const filteredActivity = useMemo(() => {
