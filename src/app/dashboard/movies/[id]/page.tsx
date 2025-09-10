@@ -9,17 +9,21 @@ import { BackButton } from '@/components/back-button';
 
 export default async function MovieDetailsPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { type: string };
 }) {
   const movieId = parseInt(params.id, 10);
   if (isNaN(movieId)) {
     notFound();
   }
 
-  const movieDetails = await getMovieDetails({ id: movieId });
+  const mediaType = searchParams.type === 'tv' ? 'tv' : 'movie';
 
-  if (!movieDetails || movieDetails.title === 'Unknown Movie') {
+  const movieDetails = await getMovieDetails({ id: movieId, mediaType });
+
+  if (!movieDetails || movieDetails.title === 'Unknown Media') {
     notFound();
   }
 

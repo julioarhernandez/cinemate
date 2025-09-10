@@ -2,9 +2,9 @@
 'use server';
 
 /**
- * @fileOverview This file defines a function for searching and discovering movies from The Movie Database (TMDB) API.
+ * @fileOverview This file defines a function for searching and discovering movies and TV shows from The Movie Database (TMDB) API.
  *
- * @exports searchMovies - A function that handles searching and filtering for movies.
+ * @exports searchMovies - A function that handles searching and filtering for media.
  * @exports SearchMoviesInput - The input type for the searchMovies function.
  * @exports SearchMoviesOutput - The return type for the searchMovies function.
  */
@@ -15,7 +15,7 @@ import {
   type SearchMoviesInput,
   type SearchMoviesOutput,
 } from '@/ai/schemas/movie-schemas';
-import { movies as defaultMovies, type Movie } from '@/lib/movies';
+import { movies as defaultMovies, type MediaItem } from '@/lib/movies';
 
 export type {SearchMoviesInput, SearchMoviesOutput};
 
@@ -24,7 +24,7 @@ export async function searchMovies(
   input: SearchMoviesInput
 ): Promise<SearchMoviesOutput> {
   const validatedInput = SearchMoviesInputSchema.parse(input);
-  const { query, year, genres, page = 1, sortBy = 'popularity.desc' } = validatedInput;
+  const { query, year, genres, page = 1, sortBy = 'popularity.desc', mediaType = 'movie' } = validatedInput;
 
   if (!process.env.TMDB_API_KEY) {
     console.error('TMDB_API_KEY is not set. Returning default movies.');
@@ -37,26 +37,28 @@ export async function searchMovies(
     page: page.toString(),
   });
 
-  // If there is a search query, use the /search/movie endpoint
+  const endpoint = mediaType === 'tv' ? 'tv' : 'movie';
+
+  // If there is a search query, use the /search/ endpoint
   if (query) {
-    url = `https://api.themoviedb.org/3/search/movie`;
+    url = `https://api.themoviedb.org/3/search/${endpoint}`;
     params.append('query', query);
     if (year) {
-      params.append('primary_release_year', year);
+      params.append(mediaType === 'tv' ? 'first_air_date_year' : 'primary_release_year', year);
     }
   } else {
-    // Otherwise, use the /discover/movie endpoint for advanced filtering
-    url = `https://api.themoviedb.org/3/discover/movie`;
+    // Otherwise, use the /discover/ endpoint for advanced filtering
+    url = `https://api.themoviedb.org/3/discover/${endpoint}`;
     params.append('sort_by', sortBy);
     
-    // Add a filter to only include movies released up to today
     const today = new Date().toISOString().split('T')[0];
-    params.append('primary_release_date.lte', today);
+    const dateParamPrefix = mediaType === 'tv' ? 'first_air_date' : 'primary_release_date';
 
-    // TMDB release_date filter is inclusive.
+    params.append(`${dateParamPrefix}.lte`, today);
+
     if (year) {
-      params.append('primary_release_date.gte', `${year}-01-01`);
-      params.append('primary_release_date.lte', `${year}-12-31`);
+      params.append(`${dateParamPrefix}.gte`, `${year}-01-01`);
+      params.append(`${dateParamPrefix}.lte`, `${year}-12-31`);
     }
      if (genres && genres.length > 0) {
       params.append('with_genres', genres.join(','));
@@ -72,17 +74,20 @@ export async function searchMovies(
       return { movies: [], hasMore: false };
     }
     const data = await response.json();
+    
+    const isMovie = mediaType === 'movie';
 
-    const movies: Movie[] = data.results.map((movie: any) => ({
-      id: movie.id,
-      title: movie.title,
-      year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
+    const movies: MediaItem[] = data.results.map((item: any) => ({
+      id: item.id,
+      title: isMovie ? item.title : item.name,
+      year: (isMovie ? item.release_date : item.first_air_date)?.substring(0, 4) || 'N/A',
       genre: '', // Genre data not in this response, fetched on details page.
-      rating: movie.vote_average ? movie.vote_average : 0,
-      imageUrl: movie.poster_path
-        ? `https://image.tmdb.org/t/p/w400${movie.poster_path}`
+      rating: item.vote_average || 0,
+      imageUrl: item.poster_path
+        ? `https://image.tmdb.org/t/p/w400${item.poster_path}`
         : 'https://picsum.photos/400/600',
-      imageHint: `${movie.title} poster`,
+      imageHint: `${isMovie ? item.title : item.name} poster`,
+      mediaType: mediaType,
     }));
 
     const hasMore = data.page < data.total_pages;
@@ -90,7 +95,7 @@ export async function searchMovies(
     // Validate output before returning
     return SearchMoviesOutputSchema.parse({ movies, hasMore });
   } catch (error) {
-    console.error('Error fetching movies from TMDB:', error);
+    console.error(`Error fetching ${mediaType} from TMDB:`, error);
     return { movies: [], hasMore: false };
   }
 }

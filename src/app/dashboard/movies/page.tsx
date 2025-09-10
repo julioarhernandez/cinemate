@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, Suspense, useTransition, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -25,6 +25,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMovieSearch } from '@/hooks/use-movie-search';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 interface UserMovieData {
   watched?: boolean;
@@ -54,6 +56,8 @@ function MoviesPageContent() {
     loadMoreMovies,
     handleLinkClick,
     isInitialized,
+    mediaType,
+    setMediaType
   } = useMovieSearch();
 
   useEffect(() => {
@@ -92,18 +96,26 @@ function MoviesPageContent() {
     <div className="space-y-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Browse Movies
+          Browse Media
         </h1>
         <p className="text-muted-foreground">
-          Search for movies to rate and add to your collection.
+          Search for movies and TV shows to rate and add to your collection.
         </p>
       </div>
 
       <div className="space-y-4">
+        <div className='flex items-center gap-4'>
+         <Tabs value={mediaType} onValueChange={(value) => setMediaType(value as 'movie' | 'tv')} className="w-full">
+            <TabsList>
+                <TabsTrigger value="movie">Movies</TabsTrigger>
+                <TabsTrigger value="tv">TV Shows</TabsTrigger>
+            </TabsList>
+         </Tabs>
+        </div>
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search movies..."
+              placeholder={`Search ${mediaType === 'movie' ? 'movies' : 'TV shows'}...`}
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -160,8 +172,8 @@ function MoviesPageContent() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="popularity.desc">Popularity</SelectItem>
-                    <SelectItem value="primary_release_date.desc">Newest First</SelectItem>
-                    <SelectItem value="primary_release_date.asc">Oldest First</SelectItem>
+                    <SelectItem value={mediaType === 'movie' ? "primary_release_date.desc" : "first_air_date.desc"}>Newest First</SelectItem>
+                    <SelectItem value={mediaType === 'movie' ? "primary_release_date.asc" : "first_air_date.asc"}>Oldest First</SelectItem>
                     <SelectItem value="vote_average.desc">Rating</SelectItem>
                 </SelectContent>
             </Select>
@@ -182,7 +194,7 @@ function MoviesPageContent() {
 
       {!loading && movies.length === 0 && (
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
-            <h3 className="text-xl font-bold tracking-tight">No movies found</h3>
+            <h3 className="text-xl font-bold tracking-tight">No results found</h3>
             <p className="text-sm text-muted-foreground mt-2">
               Try adjusting your search or filters to find what you're looking for.
             </p>
@@ -195,9 +207,9 @@ function MoviesPageContent() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {moviesWithUserData.map((movie) => (
             <Link
-                href={`/dashboard/movies/${movie.id}`}
-                key={movie.id}
-                onClick={(e) => handleLinkClick(e, `/dashboard/movies/${movie.id}`)}
+                href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`}
+                key={`${movie.id}-${movie.mediaType}`}
+                onClick={(e) => handleLinkClick(e, `/dashboard/movies/${movie.id}?type=${movie.mediaType}`)}
               >
                 <Card className="group overflow-hidden h-full">
                 <CardHeader className="p-0">

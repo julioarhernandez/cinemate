@@ -1,22 +1,23 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { searchMovies, type SearchMoviesInput, type SearchMoviesOutput } from '@/ai/flows/search-movies';
+import { searchMovies, type SearchMoviesInput } from '@/ai/flows/search-movies';
 import { useToast } from '@/hooks/use-toast';
-import { type Movie } from '@/lib/movies';
+import { type MediaItem } from '@/lib/movies';
 import { useDebounce } from './use-debounce';
 
 
-const SESSION_STORAGE_KEY = 'movieSearchState';
+const SESSION_STORAGE_KEY = 'mediaSearchState';
 
-interface MovieSearchState {
+interface MediaSearchState {
     searchTerm: string;
     year: string;
     selectedGenres: string[];
     sortBy: string;
-    movies: Movie[];
+    mediaType: 'movie' | 'tv';
+    movies: MediaItem[];
     page: number;
     hasMore: boolean;
     scrollPosition: number;
@@ -34,7 +35,8 @@ export function useMovieSearch() {
   const [year, setYear] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('popularity.desc');
-  const [movies, setMovies] = useState<Movie[]>([]);
+  const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
+  const [movies, setMovies] = useState<MediaItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,8 @@ export function useMovieSearch() {
     year?: string;
     genres?: string[];
     sortBy?: string;
+    mediaType: 'movie' | 'tv';
     page: number;
-    pageSize?: number;
     append?: boolean;
   }) => {
     if (options.append) {
@@ -64,7 +66,7 @@ export function useMovieSearch() {
         genres: options.genres,
         page: options.page,
         sortBy: options.sortBy,
-        pageSize: options.pageSize,
+        mediaType: options.mediaType,
       });
 
       if (options.append) {
@@ -72,7 +74,7 @@ export function useMovieSearch() {
             const newMovies = result.movies || [];
             const combined = [...prev, ...newMovies];
             // Use a Map to efficiently handle deduplication based on movie ID
-            const uniqueMovies = Array.from(new Map(combined.map(m => [m.id, m])).values());
+            const uniqueMovies = Array.from(new Map(combined.map(m => [`${m.id}-${m.mediaType}`, m])).values());
             return uniqueMovies;
         });
       } else {
@@ -108,11 +110,12 @@ export function useMovieSearch() {
 
     if (savedStateString && !isNewSearch) {
         try {
-            const savedState: MovieSearchState = JSON.parse(savedStateString);
+            const savedState: MediaSearchState = JSON.parse(savedStateString);
             setSearchTerm(savedState.searchTerm || '');
             setYear(savedState.year || '');
             setSelectedGenres(savedState.selectedGenres || []);
             setSortBy(savedState.sortBy || 'popularity.desc');
+            setMediaType(savedState.mediaType || 'movie');
             setMovies(savedState.movies || []);
             setPage(savedState.page || 1);
             setHasMore(savedState.hasMore === undefined ? true : savedState.hasMore);
@@ -131,6 +134,7 @@ export function useMovieSearch() {
         setYear(newYear);
         setSelectedGenres([]);
         setSortBy('popularity.desc');
+        setMediaType('movie');
         setPage(1);
         
         startTransition(() => {
@@ -139,8 +143,8 @@ export function useMovieSearch() {
                 year: newYear,
                 genres: [],
                 sortBy: 'popularity.desc',
+                mediaType: 'movie',
                 page: 1,
-                pageSize: 10,
                 append: false,
             });
         });
@@ -152,18 +156,19 @@ export function useMovieSearch() {
   // Effect to save state to sessionStorage whenever it changes
   useEffect(() => {
     if (!isInitialized) return;
-    const stateToSave: MovieSearchState = {
+    const stateToSave: MediaSearchState = {
         searchTerm,
         year,
         selectedGenres,
         sortBy,
+        mediaType,
         movies,
         page,
         hasMore,
         scrollPosition: window.scrollY
     };
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized]);
+  }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType]);
   
 
   // Effect to run search when filters change, but not on initial load
@@ -174,6 +179,7 @@ export function useMovieSearch() {
     const params = new URLSearchParams();
     if (debouncedSearchTerm) params.set('search', debouncedSearchTerm);
     if (year) params.set('year', year);
+    if (mediaType) params.set('type', mediaType);
     
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     // Use replaceState to avoid adding to browser history for filter changes
@@ -186,13 +192,13 @@ export function useMovieSearch() {
             year: year,
             genres: selectedGenres,
             sortBy: sortBy,
+            mediaType: mediaType,
             page: 1,
-            pageSize: 10,
             append: false,
         });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, year, selectedGenres, sortBy, isInitialized]);
+  }, [debouncedSearchTerm, year, selectedGenres, sortBy, isInitialized, mediaType]);
 
 
   const loadMoreMovies = () => {
@@ -205,19 +211,20 @@ export function useMovieSearch() {
         year,
         genres: selectedGenres,
         sortBy,
+        mediaType,
         page: nextPage,
-        pageSize: 10,
         append: true,
       });
     });
   };
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    const stateToSave: MovieSearchState = {
+    const stateToSave: MediaSearchState = {
         searchTerm,
         year,
         selectedGenres,
         sortBy,
+        mediaType,
         movies,
         page,
         hasMore,
@@ -236,6 +243,8 @@ export function useMovieSearch() {
     setSelectedGenres,
     sortBy,
     setSortBy,
+    mediaType,
+    setMediaType,
     movies,
     page,
     setPage,

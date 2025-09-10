@@ -1,5 +1,5 @@
 
-export interface Movie {
+export interface MediaItem {
   id: number;
   title: string;
   year: string;
@@ -8,9 +8,10 @@ export interface Movie {
   imageUrl: string;
   imageHint: string;
   synopsis?: string; // Optional synopsis for movie details
+  mediaType: 'movie' | 'tv';
 }
 
-export const movies: Movie[] = [
+export const movies: MediaItem[] = [
     {
       id: 1,
       title: 'Cosmic Echo',
@@ -19,6 +20,7 @@ export const movies: Movie[] = [
       rating: 8.4,
       imageUrl: 'https://picsum.photos/400/600?random=1',
       imageHint: 'sci-fi movie poster',
+      mediaType: 'movie',
     },
     {
       id: 2,
@@ -28,6 +30,7 @@ export const movies: Movie[] = [
       rating: 9.1,
       imageUrl: 'https://picsum.photos/400/600?random=2',
       imageHint: 'thriller movie poster',
+      mediaType: 'movie',
     },
     {
       id: 3,
@@ -37,6 +40,7 @@ export const movies: Movie[] = [
       rating: 7.2,
       imageUrl: 'https://picsum.photos/400/600?random=3',
       imageHint: 'action movie poster',
+      mediaType: 'movie',
     },
     {
       id: 4,
@@ -46,6 +50,7 @@ export const movies: Movie[] = [
       rating: 8.8,
       imageUrl: 'https://picsum.photos/400/600?random=4',
       imageHint: 'romance movie poster',
+      mediaType: 'movie',
     },
     {
       id: 5,
@@ -55,6 +60,7 @@ export const movies: Movie[] = [
       rating: 8.1,
       imageUrl: 'https://picsum.photos/400/600?random=5',
       imageHint: 'fantasy movie poster',
+      mediaType: 'movie',
     },
     {
       id: 6,
@@ -64,6 +70,7 @@ export const movies: Movie[] = [
       rating: 5.5,
       imageUrl: 'https://picsum.photos/400/600?random=6',
       imageHint: 'horror movie poster',
+      mediaType: 'movie',
     },
      {
       id: 7,
@@ -73,6 +80,7 @@ export const movies: Movie[] = [
       rating: 8.0,
       imageUrl: 'https://picsum.photos/400/600?random=7',
       imageHint: 'crime movie poster',
+      mediaType: 'movie',
     },
      {
       id: 8,
@@ -82,6 +90,7 @@ export const movies: Movie[] = [
       rating: 8.9,
       imageUrl: 'https://picsum.photos/400/600?random=8',
       imageHint: 'adventure movie poster',
+      mediaType: 'movie',
     },
     {
       id: 9,
@@ -91,6 +100,7 @@ export const movies: Movie[] = [
       rating: 8.5,
       imageUrl: 'https://picsum.photos/400/600?random=9',
       imageHint: 'thriller movie poster dark',
+      mediaType: 'movie',
     }
   ];
 
@@ -114,4 +124,13 @@ export const movies: Movie[] = [
     { id: 53, name: 'Thriller' },
     { id: 10752, name: 'War' },
     { id: 37, name: 'Western' },
+    // TV genres (some overlap)
+    { id: 10759, name: 'Action & Adventure' },
+    { id: 10762, name: 'Kids' },
+    { id: 10763, name: 'News' },
+    { id: 10764, name: 'Reality' },
+    { id: 10765, name: 'Sci-Fi & Fantasy' },
+    { id: 10766, name: 'Soap' },
+    { id: 10767, name: 'Talk' },
+    { id: 10768, name: 'War & Politics' },
   ];
