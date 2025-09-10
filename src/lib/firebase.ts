@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
+import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -21,4 +21,4 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { app, auth, db, googleProvider, signInWithPopup };
+export { app, auth, db, googleProvider, signInWithPopup, doc, setDoc, serverTimestamp, getAdditionalUserInfo };

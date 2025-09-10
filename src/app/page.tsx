@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Clapperboard } from 'lucide-react';
-import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, googleProvider, signInWithPopup, db, doc, setDoc, serverTimestamp, getAdditionalUserInfo } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { FirebaseError } from 'firebase/app';
 
@@ -22,16 +22,43 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   const handleGoogleSignIn = async () => {
+    console.log('[Login Step 1] Initiating Google Sign-In.');
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      console.log('[Login Step 2] Received user credential from Google:', user);
+      
+      const additionalUserInfo = getAdditionalUserInfo(result);
+      console.log('[Login Step 3] Checking if user is new. isNewUser:', additionalUserInfo?.isNewUser);
+
+      if (additionalUserInfo?.isNewUser) {
+        console.log('[Login Step 4] New user detected. Preparing to create database entry.');
+        const userDocRef = doc(db, 'users', user.uid);
+        const userData = {
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+        };
+        console.log('[Login Step 5] User data to be saved:', userData);
+        await setDoc(userDocRef, userData);
+        console.log('[Login Step 6] Successfully created user document in Firestore.');
+      } else {
+        console.log('[Login Step 4] Existing user detected. Skipping database creation.');
+      }
+      
+      console.log('[Login Step 7] Navigating to dashboard.');
       router.push('/dashboard');
     } catch (error) {
       const firebaseError = error as FirebaseError;
+      console.error('[Login Error] An error occurred during sign-in:', firebaseError);
+      
       // Don't show an error toast if the user closes the popup
-      if (firebaseError.code === 'auth/cancelled-popup-request') {
+      if (firebaseError.code === 'auth/cancelled-popup-request' || firebaseError.code === 'auth/popup-closed-by-user') {
+        console.log('[Login Info] Sign-in popup closed by user.');
         return;
       }
-      console.error("Google Sign-In Error:", error);
+      
       toast({
         variant: "destructive",
         title: "Sign-In Failed",
