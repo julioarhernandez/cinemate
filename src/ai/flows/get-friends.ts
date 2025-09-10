@@ -21,7 +21,6 @@ import type { GetFriendsInput, GetFriendsOutput } from '@/ai/schemas/friend-sche
  */
 export async function getFriends(input: GetFriendsInput): Promise<GetFriendsOutput> {
   const { userId } = input;
-  console.log(`[getFriends] Starting for userId: ${userId}`);
   
   if (!userId) {
     console.error("[getFriends] Failed: userId is missing.");
@@ -29,15 +28,12 @@ export async function getFriends(input: GetFriendsInput): Promise<GetFriendsOutp
   }
 
   const friendsPath = `users/${userId}/friends`;
-  console.log(`[getFriends] Querying path: ${friendsPath}`);
 
   try {
     const friendsRef = collection(db, 'users', userId, 'friends');
     const snapshot = await getDocs(friendsRef);
 
-    console.log(`[getFriends] Snapshot size: ${snapshot.size}`);
     if (snapshot.empty) {
-      console.log("[getFriends] Snapshot is empty, returning no friends.");
       return { friends: [] };
     }
 
@@ -49,11 +45,9 @@ export async function getFriends(input: GetFriendsInput): Promise<GetFriendsOutp
             email: data.email || 'No email',
             photoURL: data.photoURL || '',
         };
-        console.log("[getFriends] Found friend:", friendData);
         return friendData;
     });
 
-    console.log(`[getFriends] Returning ${friends.length} friends.`);
     return { friends };
   } catch (error) {
     console.error(`[getFriends] Error fetching friends for user ${userId}:`, error);
