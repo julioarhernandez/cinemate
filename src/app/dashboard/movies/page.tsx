@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface UserMovieData {
   watched?: boolean;
@@ -79,6 +79,16 @@ function MoviesPageContent() {
     if (cast) count++;
     return count;
   }, [year, selectedGenres, language, cast]);
+
+  const isDiscoveryFiltered = useMemo(() => {
+    return selectedGenres.length > 0 || !!language || !!cast;
+  }, [selectedGenres, language, cast]);
+
+  useEffect(() => {
+    if (isDiscoveryFiltered && searchTerm) {
+      setSearchTerm('');
+    }
+  }, [isDiscoveryFiltered, searchTerm, setSearchTerm]);
 
   useEffect(() => {
     async function fetchUserRatings() {
@@ -173,21 +183,31 @@ function MoviesPageContent() {
             </TabsList>
          </Tabs>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex gap-2">
-            <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder={`Search ${mediaType === 'movie' ? 'movies' : 'TV shows'}...`}
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {loading && movies.length > 0 && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+        <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="space-y-2">
+            <div className="flex gap-2">
+              <div className="relative flex-grow">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={`Search ${mediaType === 'movie' ? 'movies' : 'TV shows'}...`}
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    disabled={isDiscoveryFiltered}
+                  />
+                  {loading && movies.length > 0 && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+              </div>
+              <Button type="submit">
+                  <Search className="mr-2 h-4 w-4" />
+                  Search
+              </Button>
             </div>
-            <Button type="submit">
-                <Search className="mr-2 h-4 w-4" />
-                Search
-            </Button>
+             {isDiscoveryFiltered && (
+              <Alert variant="default" className="text-sm">
+                <AlertDescription>
+                  Advanced filters (Genre, Language, Cast) only apply when discovering media, not when searching with keywords.
+                </AlertDescription>
+              </Alert>
+            )}
         </form>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-between">
@@ -237,10 +257,16 @@ function MoviesPageContent() {
                                     aria-expanded={languagePopoverOpen}
                                     className="w-full justify-between font-normal"
                                     >
-                                    {language
-                                        ? allLanguages.find((lang) => lang.iso_639_1 === language)?.english_name
-                                        : "Select language..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    <span className="truncate">
+                                      {language
+                                          ? allLanguages.find((lang) => lang.iso_639_1 === language)?.english_name
+                                          : "Select language..."}
+                                    </span>
+                                    {language ? (
+                                      <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setLanguage('')}}/>
+                                    ) : (
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    )}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[240px] p-0" data-radix-popover-content-wrapper>
@@ -252,9 +278,12 @@ function MoviesPageContent() {
                                             {allLanguages.map((lang) => (
                                                 <CommandItem
                                                   key={lang.iso_639_1}
-                                                  value={lang.iso_639_1}
+                                                  value={lang.english_name}
                                                   onSelect={(currentValue) => {
-                                                    setLanguage(currentValue === language ? "" : currentValue);
+                                                    const selectedLang = allLanguages.find(l => l.english_name.toLowerCase() === currentValue.toLowerCase());
+                                                    if (selectedLang) {
+                                                      setLanguage(selectedLang.iso_639_1 === language ? "" : selectedLang.iso_639_1);
+                                                    }
                                                     setLanguagePopoverOpen(false);
                                                   }}
                                                 >
@@ -461,3 +490,5 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
+
+  
