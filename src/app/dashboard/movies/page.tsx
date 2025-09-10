@@ -21,11 +21,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { genres as allGenres } from '@/lib/movies';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMovieSearch } from '@/hooks/use-movie-search';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface UserMovieData {
@@ -168,14 +168,8 @@ function MoviesPageContent() {
 
                     <div className="space-y-2">
                         <Label>Genre</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                 <Button variant="outline" className="w-full justify-start font-normal">
-                                    {selectedGenres.length > 0 ? `${selectedGenres.length} selected` : "Select genres"}
-                                 </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                               <div className="p-4 grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                        <ScrollArea className="h-40 rounded-md border p-2">
+                            <div className="space-y-2">
                                 {allGenres.map(genre => (
                                     <div key={genre.id} className="flex items-center space-x-2">
                                         <Checkbox id={`genre-${genre.id}`} checked={selectedGenres.includes(genre.id.toString())} onCheckedChange={(checked) => {
@@ -187,9 +181,8 @@ function MoviesPageContent() {
                                         <Label htmlFor={`genre-${genre.id}`} className="font-normal">{genre.name}</Label>
                                     </div>
                                 ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                            </div>
+                        </ScrollArea>
                     </div>
                 </div>
               </CollapsibleContent>
