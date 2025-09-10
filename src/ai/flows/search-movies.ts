@@ -64,6 +64,10 @@ export async function searchMovies(
     if (year) {
       params.append(mediaType === 'tv' ? 'first_air_date_year' : 'primary_release_year', year);
     }
+    if (language) {
+      // The search endpoint uses `language` for translations, not `with_original_language`
+      params.append('language', language);
+    }
   } else {
     // Otherwise, use the /discover/ endpoint for advanced filtering
     url = `https://api.themoviedb.org/3/discover/${endpoint}`;
