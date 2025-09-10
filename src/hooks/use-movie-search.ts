@@ -233,6 +233,18 @@ export function useMovieSearch() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
     router.push(href);
   };
+  
+  const handleMediaTypeChange = (newMediaType: 'movie' | 'tv') => {
+    if (newMediaType !== mediaType) {
+        setMediaType(newMediaType);
+        setSearchTerm('');
+        // You might want to reset other filters too, like year or genres
+        setYear('');
+        setSelectedGenres([]);
+        setSortBy('popularity.desc');
+    }
+  };
+
 
   return {
     searchTerm,
@@ -255,5 +267,6 @@ export function useMovieSearch() {
     loadMoreMovies,
     handleLinkClick,
     isInitialized,
+    handleMediaTypeChange,
   };
 }

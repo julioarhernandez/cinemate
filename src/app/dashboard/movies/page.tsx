@@ -57,7 +57,7 @@ function MoviesPageContent() {
     handleLinkClick,
     isInitialized,
     mediaType,
-    setMediaType
+    handleMediaTypeChange
   } = useMovieSearch();
 
   useEffect(() => {
@@ -105,7 +105,7 @@ function MoviesPageContent() {
 
       <div className="space-y-4">
         <div className='flex items-center gap-4'>
-         <Tabs value={mediaType} onValueChange={(value) => setMediaType(value as 'movie' | 'tv')} className="w-full">
+         <Tabs value={mediaType} onValueChange={(value) => handleMediaTypeChange(value as 'movie' | 'tv')} className="w-full">
             <TabsList>
                 <TabsTrigger value="movie">Movies</TabsTrigger>
                 <TabsTrigger value="tv">TV Shows</TabsTrigger>
