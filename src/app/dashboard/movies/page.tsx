@@ -100,9 +100,17 @@ function MoviesPageContent() {
   // Effect to handle clicks outside the filter menu
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
-        setIsFiltersOpen(false);
+      const target = event.target as Node;
+      // Do nothing if the click is inside the filter collapsible area
+      if (filtersRef.current && filtersRef.current.contains(target)) {
+        return;
       }
+      // Do nothing if the click is inside any popover content
+      if (target instanceof Element && target.closest('[data-radix-popover-content-wrapper]')) {
+        return;
+      }
+      // Otherwise, close the filters
+      setIsFiltersOpen(false);
     }
 
     if (isFiltersOpen) {
@@ -235,7 +243,7 @@ function MoviesPageContent() {
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0">
+                                <PopoverContent className="w-[240px] p-0" data-radix-popover-content-wrapper>
                                     <Command>
                                         <CommandInput placeholder="Search language..." />
                                         <CommandEmpty>No language found.</CommandEmpty>
@@ -243,12 +251,12 @@ function MoviesPageContent() {
                                             <ScrollArea className='h-40'>
                                             {allLanguages.map((lang) => (
                                                 <CommandItem
-                                                key={lang.iso_639_1}
-                                                value={lang.iso_639_1}
-                                                onSelect={(currentValue) => {
+                                                  key={lang.iso_639_1}
+                                                  value={lang.iso_639_1}
+                                                  onSelect={(currentValue) => {
                                                     setLanguage(currentValue === language ? "" : currentValue);
                                                     setLanguagePopoverOpen(false);
-                                                }}
+                                                  }}
                                                 >
                                                 <Check
                                                     className={cn(
@@ -305,7 +313,7 @@ function MoviesPageContent() {
                                     </div>
                                   </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-[240px] p-0" align="start">
+                              <PopoverContent className="w-[240px] p-0" align="start" data-radix-popover-content-wrapper>
                                   <Command>
                                       <CommandInput placeholder="Search genres..." />
                                       <CommandList>
