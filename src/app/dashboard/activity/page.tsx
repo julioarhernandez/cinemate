@@ -212,7 +212,7 @@ export default function ActivityPage() {
                 </div>
                  <div className="space-y-2">
                     <Label>Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
-                    <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} max={10} step={1} />
+                    <Slider value={ratingRange} onValueChange={setRatingRange} max={10} step={1} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="time-range-filter">Time Range</Label>
