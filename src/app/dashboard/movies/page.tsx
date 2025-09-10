@@ -70,9 +70,8 @@ function MoviesPageContent() {
     let count = 0;
     if (year) count++;
     if (selectedGenres.length > 0) count++;
-    if (sortBy !== 'popularity.desc') count++;
     return count;
-  }, [year, selectedGenres, sortBy]);
+  }, [year, selectedGenres]);
 
   useEffect(() => {
     async function fetchUserRatings() {
@@ -162,29 +161,26 @@ function MoviesPageContent() {
             </Button>
         </form>
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-between">
             <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
-                <div className="flex items-center gap-2">
-                    <CollapsibleTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "w-full sm:w-auto",
-                            activeFilterCount > 0 && "border-primary text-primary"
-                          )}
-                        >
-                            <ListFilter className="mr-2 h-4 w-4" />
-                            Filters
-                            {activeFilterCount > 0 && (
-                               <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                                {activeFilterCount}
-                               </span>
-                            )}
-                        </Button>
-                    </CollapsibleTrigger>
-                    {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset</Button>}
-                </div>
+                <CollapsibleTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "w-full sm:w-auto",
+                        activeFilterCount > 0 && "border-primary text-primary"
+                      )}
+                    >
+                        <ListFilter className="mr-2 h-4 w-4" />
+                        Filters
+                        {activeFilterCount > 0 && (
+                           <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                            {activeFilterCount}
+                           </span>
+                        )}
+                    </Button>
+                </CollapsibleTrigger>
               <CollapsibleContent ref={filtersRef} className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
                 <div className="rounded-lg border p-4 bg-background space-y-4 w-[280px]">
                     <div className="space-y-2">
@@ -210,6 +206,7 @@ function MoviesPageContent() {
                             </div>
                         </ScrollArea>
                     </div>
+                    {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset Filters</Button>}
                 </div>
               </CollapsibleContent>
             </Collapsible>

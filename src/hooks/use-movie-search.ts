@@ -260,11 +260,20 @@ export function useMovieSearch() {
   const resetFilters = useCallback(() => {
     setYear('');
     setSelectedGenres([]);
-    setSortBy('popularity.desc');
-    // We don't reset searchTerm here, only filters.
+    // Do not reset sortBy as it's not a filter
     // Immediately trigger a new search with the cleared filters.
-    handleSearch();
-  }, [handleSearch]);
+    startTransition(() => {
+        runSearch({
+            query: searchTerm,
+            year: '',
+            genres: [],
+            sortBy: sortBy,
+            mediaType: mediaType,
+            page: 1,
+            append: false,
+        });
+    });
+  }, [searchTerm, sortBy, mediaType, runSearch]);
 
 
   return {
