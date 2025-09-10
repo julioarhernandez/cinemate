@@ -66,6 +66,7 @@ export async function searchMovies(
   }
   
   const fullUrl = `${url}?${params.toString()}`;
+  console.log(`Fetching from TMDB API: ${fullUrl}`);
 
   try {
     const response = await fetch(fullUrl, { next: { revalidate: 3600 } }); // Cache for 1 hour
