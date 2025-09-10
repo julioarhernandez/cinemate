@@ -107,6 +107,7 @@ export default function DashboardPage() {
           let allRatings: {
             friend: { id: string; displayName: string; photoURL?: string };
             movieId: string;
+            mediaType: 'movie' | 'tv';
             rating: number;
             watchedAt: Timestamp;
           }[] = [];
@@ -128,6 +129,7 @@ export default function DashboardPage() {
                  allRatings.push({
                     friend: { id: friend.id, displayName: friend.displayName, photoURL: friend.photoURL },
                     movieId: doc.id,
+                    mediaType: data.mediaType || 'movie', // Default to movie for older records
                     rating: data.rating || 0,
                     watchedAt: data.updatedAt,
                 });
@@ -144,6 +146,7 @@ export default function DashboardPage() {
             latestRatings.map(async (rating) => {
               const movieDetails = await getMovieDetails({
                 id: parseInt(rating.movieId, 10),
+                mediaType: rating.mediaType,
               });
               return {
                 friend: rating.friend,
@@ -155,7 +158,7 @@ export default function DashboardPage() {
           );
           
           // Filter out any movies that couldn't be found
-          const finalActivity = activityWithMovieDetails.filter(item => item.movie && item.movie.title !== 'Unknown Movie');
+          const finalActivity = activityWithMovieDetails.filter(item => item.movie && item.movie.title !== 'Unknown Media');
           
           setFriendActivity(finalActivity as FriendActivityItem[]);
 
@@ -289,7 +292,7 @@ export default function DashboardPage() {
                         <p className="text-sm text-muted-foreground">
                           <span className="font-bold text-foreground">{item.friend.displayName}</span>
                           {' '}watched{' '}
-                          <Link href={`/dashboard/movies/${item.movie.id}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
+                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
                         </p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
@@ -304,7 +307,7 @@ export default function DashboardPage() {
                           )}
                         </div>
                       </div>
-                       <Link href={`/dashboard/movies/${item.movie.id}`}>
+                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
                         <Image
                             src={item.movie.imageUrl}
                             alt={item.movie.title}
