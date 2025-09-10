@@ -176,16 +176,6 @@ export function useMovieSearch() {
   
 
   const handleSearch = () => {
-    // Create a new URLSearchParams object
-    const params = new URLSearchParams();
-    if (searchTerm) params.set('search', searchTerm);
-    if (year) params.set('year', year);
-    if (mediaType) params.set('type', mediaType);
-    
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    // Use replaceState to avoid adding to browser history for filter changes
-    window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl);
-
     setPage(1);
     startTransition(() => {
         runSearch({
@@ -260,8 +250,11 @@ export function useMovieSearch() {
   const resetFilters = useCallback(() => {
     setYear('');
     setSelectedGenres([]);
-    // Do not reset sortBy as it's not a filter
+    // Do not reset sort by
+    // Do not reset search term
+    
     // Immediately trigger a new search with the cleared filters.
+    setPage(1);
     startTransition(() => {
         runSearch({
             query: searchTerm,

@@ -182,31 +182,41 @@ function MoviesPageContent() {
                     </Button>
                 </CollapsibleTrigger>
               <CollapsibleContent ref={filtersRef} className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
-                <div className="rounded-lg border p-4 bg-background space-y-4 w-[280px]">
-                    <div className="space-y-2">
-                        <Label>Release Year</Label>
-                        <Input placeholder="e.g., 2024" value={year} onChange={e => setYear(e.target.value)} />
+                <div className="rounded-lg border p-4 bg-background w-[280px]">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-sm font-semibold">Filters</h4>
+                        {activeFilterCount > 0 && (
+                            <Button variant="ghost" size="sm" onClick={resetFilters} className="-mr-2 h-auto p-1">
+                                Reset
+                            </Button>
+                        )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Genre</Label>
-                        <ScrollArea className="h-40 rounded-md border p-2">
-                            <div className="space-y-2">
-                                {allGenres.map(genre => (
-                                    <div key={genre.id} className="flex items-center space-x-2">
-                                        <Checkbox id={`genre-${genre.id}`} checked={selectedGenres.includes(genre.id.toString())} onCheckedChange={(checked) => {
-                                            const genreId = genre.id.toString();
-                                            return checked
-                                                ? setSelectedGenres([...selectedGenres, genreId])
-                                                : setSelectedGenres(selectedGenres.filter(g => g !== genreId));
-                                        }} />
-                                        <Label htmlFor={`genre-${genre.id}`} className="font-normal">{genre.name}</Label>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Release Year</Label>
+                            <Input placeholder="e.g., 2024" value={year} onChange={e => setYear(e.target.value)} />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Genre</Label>
+                            <ScrollArea className="h-40 rounded-md border p-2">
+                                <div className="space-y-2">
+                                    {allGenres.map(genre => (
+                                        <div key={genre.id} className="flex items-center space-x-2">
+                                            <Checkbox id={`genre-${genre.id}`} checked={selectedGenres.includes(genre.id.toString())} onCheckedChange={(checked) => {
+                                                const genreId = genre.id.toString();
+                                                return checked
+                                                    ? setSelectedGenres([...selectedGenres, genreId])
+                                                    : setSelectedGenres(selectedGenres.filter(g => g !== genreId));
+                                            }} />
+                                            <Label htmlFor={`genre-${genre.id}`} className="font-normal">{genre.name}</Label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
                     </div>
-                    {activeFilterCount > 0 && <Button variant="ghost" size="sm" onClick={resetFilters}>Reset Filters</Button>}
                 </div>
               </CollapsibleContent>
             </Collapsible>
