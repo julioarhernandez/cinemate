@@ -30,6 +30,10 @@ interface MovieSelectionDialogProps {
   onSelectMovies: (movies: { id: number; title: string }[]) => void;
 }
 
+interface UserMovieData {
+    mediaType?: 'movie' | 'tv';
+}
+
 export function MovieSelectionDialog({
   open,
   onOpenChange,
@@ -52,10 +56,16 @@ export function MovieSelectionDialog({
       const q = query(ratingsCollection, where('watched', '==', true));
       const snapshot = await getDocs(q);
 
-      const movieIds: number[] = [];
-      snapshot.forEach((doc) => movieIds.push(parseInt(doc.id)));
+      const mediaItems: { id: number; mediaType: 'movie' | 'tv' }[] = [];
+      snapshot.forEach((doc) => {
+          const data = doc.data() as UserMovieData;
+          mediaItems.push({
+            id: parseInt(doc.id, 10),
+            mediaType: data.mediaType || 'movie',
+          });
+      });
 
-      const moviePromises = movieIds.map(id => getMovieDetails({ id }));
+      const moviePromises = mediaItems.map(item => getMovieDetails({ id: item.id, mediaType: item.mediaType }));
       const moviesData = (await Promise.all(moviePromises)).filter(
         (m): m is MovieDetailsOutput => !!m && m.title !== 'Unknown Movie'
       );
@@ -151,7 +161,7 @@ export function MovieSelectionDialog({
                 const isSelected = !!selectedMovies[movie.id];
                 return (
                   <div
-                    key={movie.id}
+                    key={`${movie.id}-${movie.mediaType}`}
                     className="relative cursor-pointer"
                     onClick={() => handleSelect(movie)}
                   >

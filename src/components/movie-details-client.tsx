@@ -90,8 +90,8 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     }
     try {
       const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
-      // Add updatedAt timestamp to ensure the document is updated
-      const dataWithTimestamp = { ...dataToSave, updatedAt: serverTimestamp() };
+      // Always include the mediaType and an updatedAt timestamp
+      const dataWithTimestamp = { ...dataToSave, mediaType: movieDetails.mediaType, updatedAt: serverTimestamp() };
       await setDoc(ratingDocRef, dataWithTimestamp, { merge: true });
       return true;
     } catch (error) {

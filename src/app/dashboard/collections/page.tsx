@@ -86,9 +86,11 @@ export default function CollectionsPage() {
         const mediaItems: { id: number; mediaType: 'movie' | 'tv' }[] = [];
         snapshot.forEach((doc) => {
             const data = doc.data() as UserMovieData;
+            // Ensure we have a mediaType, default to 'movie' for older records
+            const mediaType = data.mediaType || 'movie';
             mediaItems.push({
-                id: parseInt(doc.id),
-                mediaType: data.mediaType || 'movie',
+                id: parseInt(doc.id, 10),
+                mediaType: mediaType,
             });
             ratings[doc.id] = data;
         });
@@ -401,5 +403,3 @@ export default function CollectionsPage() {
     </div>
   );
 }
-
-    
