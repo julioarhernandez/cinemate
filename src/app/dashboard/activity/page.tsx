@@ -12,7 +12,6 @@ import { Loader2, Star, ListFilter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -196,50 +195,40 @@ export default function ActivityPage() {
 
       <Card>
         <CardContent className="p-4">
-             <Collapsible>
-                <CollapsibleTrigger asChild>
-                    <Button variant="outline" size="sm">
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        Filters
-                    </Button>
-                </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4 animate-in fade-in-0 zoom-in-95">
-                <div className="rounded-lg border p-4 grid md:grid-cols-3 gap-6">
-                     <div className="space-y-2">
-                        <Label>Friend</Label>
-                        <Select value={selectedFriend} onValueChange={setSelectedFriend}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a friend" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Friends</SelectItem>
-                                {friends.map(friend => (
-                                    <SelectItem key={friend.id} value={friend.id}>{friend.displayName}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
-                        <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} max={10} step={1} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Time Range</Label>
-                         <Select value={timeRange} onValueChange={(value) => setTimeRange(value as any)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a time range" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Time</SelectItem>
-                                <SelectItem value="week">Past Week</SelectItem>
-                                <SelectItem value="month">Past Month</SelectItem>
-                                <SelectItem value="year">Past Year</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                 <div className="space-y-2">
+                    <Label htmlFor="friend-filter">Friend</Label>
+                    <Select value={selectedFriend} onValueChange={setSelectedFriend}>
+                        <SelectTrigger id="friend-filter">
+                            <SelectValue placeholder="Select a friend" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Friends</SelectItem>
+                            {friends.map(friend => (
+                                <SelectItem key={friend.id} value={friend.id}>{friend.displayName}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+                 <div className="space-y-2">
+                    <Label>Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
+                    <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} max={10} step={1} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="time-range-filter">Time Range</Label>
+                     <Select value={timeRange} onValueChange={(value) => setTimeRange(value as any)}>
+                        <SelectTrigger id="time-range-filter">
+                            <SelectValue placeholder="Select a time range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="week">Past Week</SelectItem>
+                            <SelectItem value="month">Past Month</SelectItem>
+                            <SelectItem value="year">Past Year</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
         </CardContent>
       </Card>
 
