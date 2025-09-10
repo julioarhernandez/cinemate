@@ -202,7 +202,7 @@ function MoviesPageContent() {
               </Button>
             </div>
              {isDiscoveryFiltered && (
-              <Alert variant="default" className="text-sm">
+              <Alert variant="default" className="text-xs border-none p-0">
                 <AlertDescription>
                   Advanced filters (Genre, Language, Cast) only apply when discovering media, not when searching with keywords.
                 </AlertDescription>
@@ -490,5 +490,3 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
-
-  
