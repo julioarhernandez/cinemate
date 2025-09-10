@@ -21,19 +21,23 @@ import type { GetFriendsInput, GetFriendsOutput } from '@/ai/schemas/friend-sche
  */
 export async function getFriends(input: GetFriendsInput): Promise<GetFriendsOutput> {
   const { userId } = input;
+  console.log(`[getFriends Debug] Step 1: Function called with userId: ${userId}`);
   
   if (!userId) {
-    console.error("[getFriends] Failed: userId is missing.");
+    console.error("[getFriends Debug] Step 2: Failed because userId is missing.");
     return { friends: [] };
   }
 
   const friendsPath = `users/${userId}/friends`;
+  console.log(`[getFriends Debug] Step 2: Querying Firestore collection at path: "${friendsPath}"`);
 
   try {
-    const friendsRef = collection(db, 'users', userId, 'friends');
+    const friendsRef = collection(db, friendsPath);
     const snapshot = await getDocs(friendsRef);
+    console.log(`[getFriends Debug] Step 3: Firestore query executed. Snapshot empty: ${snapshot.empty}. Number of documents: ${snapshot.size}`);
 
     if (snapshot.empty) {
+      console.log('[getFriends Debug] Step 4: No friend documents found, returning empty array.');
       return { friends: [] };
     }
 
@@ -45,12 +49,14 @@ export async function getFriends(input: GetFriendsInput): Promise<GetFriendsOutp
             email: data.email || 'No email',
             photoURL: data.photoURL || '',
         };
+        console.log(`[getFriends Debug] Found friend: ${JSON.stringify(friendData)}`);
         return friendData;
     });
-
+    
+    console.log(`[getFriends Debug] Step 5: Successfully processed ${friends.length} friends. Returning data.`);
     return { friends };
   } catch (error) {
-    console.error(`[getFriends] Error fetching friends for user ${userId}:`, error);
+    console.error(`[getFriends Debug] Step X: An error occurred while fetching friends for user ${userId}:`, error);
     return { friends: [] };
   }
 }
