@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
@@ -246,9 +245,12 @@ function MoviesPageContent() {
                                                 <CommandItem
                                                 key={lang.iso_639_1}
                                                 value={lang.english_name}
-                                                onSelect={() => {
-                                                    setLanguage(lang.iso_639_1 === language ? "" : lang.iso_639_1)
-                                                    setLanguagePopoverOpen(false)
+                                                onSelect={(currentValue) => {
+                                                    const selectedLang = allLanguages.find(l => l.english_name.toLowerCase() === currentValue.toLowerCase());
+                                                    if (selectedLang) {
+                                                        setLanguage(selectedLang.iso_639_1 === language ? "" : selectedLang.iso_639_1);
+                                                    }
+                                                    setLanguagePopoverOpen(false);
                                                 }}
                                                 >
                                                 <Check
