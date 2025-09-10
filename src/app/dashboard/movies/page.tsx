@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2, ListFilter, EyeOff, X, Check } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, EyeOff, X, Check, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -22,8 +22,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { genres as allGenres, languages as allLanguages } from '@/lib/movies';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useMovieSearch } from '@/hooks/use-movie-search';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,6 +42,7 @@ function MoviesPageContent() {
   const [user, authLoading] = useAuthState(auth);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -222,18 +221,49 @@ function MoviesPageContent() {
 
                          <div className="space-y-2">
                             <Label>Original Language</Label>
-                             <Select value={language} onValueChange={setLanguage}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any Language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {allLanguages.map(lang => (
-                                        <SelectItem key={lang.iso_639_1} value={lang.iso_639_1}>
-                                            {lang.english_name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                             <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={languagePopoverOpen}
+                                    className="w-full justify-between font-normal"
+                                    >
+                                    {language
+                                        ? allLanguages.find((lang) => lang.iso_639_1 === language)?.english_name
+                                        : "Select language..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[240px] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search language..." />
+                                        <CommandEmpty>No language found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <ScrollArea className='h-40'>
+                                            {allLanguages.map((lang) => (
+                                                <CommandItem
+                                                key={lang.iso_639_1}
+                                                value={lang.english_name}
+                                                onSelect={() => {
+                                                    setLanguage(lang.iso_639_1 === language ? "" : lang.iso_639_1)
+                                                    setLanguagePopoverOpen(false)
+                                                }}
+                                                >
+                                                <Check
+                                                    className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    language === lang.iso_639_1 ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {lang.english_name}
+                                                </CommandItem>
+                                            ))}
+                                            </ScrollArea>
+                                        </CommandGroup>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
                          <div className="space-y-2">
@@ -287,6 +317,7 @@ function MoviesPageContent() {
                                                 return (
                                                     <CommandItem
                                                         key={genre.id}
+                                                        value={genre.name}
                                                         onSelect={() => handleGenreSelect(genre.id.toString())}
                                                     >
                                                         <Check
