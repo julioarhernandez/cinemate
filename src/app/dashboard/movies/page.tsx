@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
@@ -26,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useMovieSearch } from '@/hooks/use-movie-search';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 
 interface UserMovieData {
@@ -62,6 +64,14 @@ function MoviesPageContent() {
     handleMediaTypeChange,
     handleSearch,
   } = useMovieSearch();
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (year) count++;
+    if (selectedGenres.length > 0) count++;
+    if (sortBy !== 'popularity.desc') count++;
+    return count;
+  }, [year, selectedGenres, sortBy]);
 
   useEffect(() => {
     async function fetchUserRatings() {
@@ -154,9 +164,21 @@ function MoviesPageContent() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
                 <CollapsibleTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "w-full sm:w-auto",
+                        activeFilterCount > 0 && "border-primary text-primary"
+                      )}
+                    >
                         <ListFilter className="mr-2 h-4 w-4" />
                         Filters
+                        {activeFilterCount > 0 && (
+                           <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                            {activeFilterCount}
+                           </span>
+                        )}
                     </Button>
                 </CollapsibleTrigger>
               <CollapsibleContent ref={filtersRef} className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
