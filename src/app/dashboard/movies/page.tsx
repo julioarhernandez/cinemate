@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2, ListFilter, EyeOff } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, EyeOff, X, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -28,6 +28,8 @@ import { useMovieSearch } from '@/hooks/use-movie-search';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 
 interface UserMovieData {
@@ -130,6 +132,20 @@ function MoviesPageContent() {
   const showLoadingSpinner = loading && !isInitialized;
   const showInitialLoad = loading && isInitialized && movies.length === 0;
 
+  const handleGenreSelect = (genreId: string) => {
+    setSelectedGenres(prev => {
+        if (prev.includes(genreId)) {
+            return prev.filter(id => id !== genreId);
+        } else {
+            return [...prev, genreId];
+        }
+    });
+  };
+
+  const selectedGenreNames = useMemo(() => {
+      return selectedGenres.map(id => allGenres.find(g => g.id.toString() === id)?.name).filter(Boolean) as string[];
+  }, [selectedGenres]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -226,23 +242,70 @@ function MoviesPageContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Genre</Label>
-                            <ScrollArea className="h-40 rounded-md border p-2">
-                                <div className="space-y-2">
-                                    {allGenres.map(genre => (
-                                        <div key={genre.id} className="flex items-center space-x-2">
-                                            <Checkbox id={`genre-${genre.id}`} checked={selectedGenres.includes(genre.id.toString())} onCheckedChange={(checked) => {
-                                                const genreId = genre.id.toString();
-                                                return checked
-                                                    ? setSelectedGenres([...selectedGenres, genreId])
-                                                    : setSelectedGenres(selectedGenres.filter(g => g !== genreId));
-                                            }} />
-                                            <Label htmlFor={`genre-${genre.id}`} className="font-normal">{genre.name}</Label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        </div>
+                          <Label>Genre</Label>
+                          <Popover>
+                              <PopoverTrigger asChild>
+                                  <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      className="w-full justify-between font-normal h-auto"
+                                  >
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                      {selectedGenreNames.length > 0 ? (
+                                          selectedGenreNames.map(name => (
+                                              <Badge
+                                                  variant="secondary"
+                                                  key={name}
+                                                  className="rounded-sm"
+                                                  onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      const genreToUnselect = allGenres.find(g => g.name === name);
+                                                      if (genreToUnselect) {
+                                                          handleGenreSelect(genreToUnselect.id.toString());
+                                                      }
+                                                  }}
+                                              >
+                                                  {name}
+                                                  <X className="ml-1 h-3 w-3" />
+                                              </Badge>
+                                          ))
+                                      ) : (
+                                          <span className="text-muted-foreground">Select genres...</span>
+                                      )}
+                                    </div>
+                                  </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[240px] p-0" align="start">
+                                  <Command>
+                                      <CommandInput placeholder="Search genres..." />
+                                      <CommandList>
+                                        <CommandEmpty>No genre found.</CommandEmpty>
+                                        <CommandGroup>
+                                          <ScrollArea className="h-40">
+                                            {allGenres.map((genre) => {
+                                                const isSelected = selectedGenres.includes(genre.id.toString());
+                                                return (
+                                                    <CommandItem
+                                                        key={genre.id}
+                                                        onSelect={() => handleGenreSelect(genre.id.toString())}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                isSelected ? "opacity-100" : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {genre.name}
+                                                    </CommandItem>
+                                                );
+                                            })}
+                                          </ScrollArea>
+                                        </CommandGroup>
+                                      </CommandList>
+                                  </Command>
+                              </PopoverContent>
+                          </Popover>
+                      </div>
                     </div>
                 </div>
               </CollapsibleContent>
@@ -359,5 +422,3 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
-
-    
