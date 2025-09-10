@@ -166,66 +166,67 @@ export default function WatchlistPage() {
       {!loading && filteredMovies.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {filteredMovies.map((movie) => (
-                <Card key={movie.id} className="group overflow-hidden h-full flex flex-col">
-                    <div className="relative">
-                      <Link href={`/dashboard/movies/${movie.id}`} className="block">
-                        <CardHeader className="p-0">
-                            <div className="relative h-60 overflow-hidden">
-                            <Image
-                                src={movie.imageUrl}
-                                alt={movie.title}
-                                data-ai-hint={movie.imageHint}
-                                width={400}
-                                height={600}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            </div>
-                        </CardHeader>
-                      </Link>
-                      <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                              <div
-                                  className="absolute top-2 right-2"
-                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                              >
-                                  <Badge 
-                                      variant="secondary" 
-                                      className="flex items-center gap-1 cursor-pointer hover:bg-destructive/80 hover:text-destructive-foreground"
-                                  >
-                                      <Bookmark className="h-3 w-3" /> Watchlist
-                                  </Badge>
-                              </div>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                          <AlertDialogHeader>
-                              <AlertDialogTitle>Remove from Watchlist?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                              Are you sure you want to remove "{movie.title}" from your watchlist?
-                              </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleRemoveFromWatchlist(movie.id)} className="bg-destructive hover:bg-destructive/90">
-                                 <Trash2 className="mr-2 h-4 w-4"/> Remove
-                              </AlertDialogAction>
-                          </AlertDialogFooter>
-                          </AlertDialogContent>
-                      </AlertDialog>
+              <Card key={movie.id} className="group overflow-hidden h-full flex flex-col">
+                <div className="relative">
+                  <Link href={`/dashboard/movies/${movie.id}`}>
+                    <div className="relative h-60 overflow-hidden">
+                      <Image
+                          src={movie.imageUrl}
+                          alt={movie.title}
+                          data-ai-hint={movie.imageHint}
+                          width={400}
+                          height={600}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     </div>
-                    <Link href={`/dashboard/movies/${movie.id}`} className="block h-full">
-                        <div className="flex flex-col flex-grow p-3">
-                            <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{movie.year}</p>
-                             <CardFooter className="p-0 pt-2 mt-auto">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Star className="h-4 w-4 text-amber-400" /> 
-                                    <span>{movie.rating.toFixed(1)}</span>
-                                </div>
-                            </CardFooter>
+                  </Link>
+
+                  <div className="absolute top-2 right-2">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                         <Badge 
+                            variant="secondary" 
+                            className="flex items-center gap-1 cursor-pointer hover:bg-destructive/80 hover:text-destructive-foreground"
+                            onClick={(e) => {e.stopPropagation()}}
+                        >
+                            <Bookmark className="h-3 w-3" /> Watchlist
+                        </Badge>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove from Watchlist?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove "{movie.title}" from your watchlist?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleRemoveFromWatchlist(movie.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+                
+                <Link href={`/dashboard/movies/${movie.id}`} className="block flex-grow flex flex-col">
+                    <CardContent className="p-3 flex-grow">
+                        <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{movie.year}</p>
+                    </CardContent>
+                    <CardFooter className="p-3 pt-0">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Star className="h-4 w-4 text-amber-400" /> 
+                            <span>{movie.rating.toFixed(1)}</span>
                         </div>
-                    </Link>
-                </Card>
+                    </CardFooter>
+                </Link>
+              </Card>
             ))}
         </div>
       )}
