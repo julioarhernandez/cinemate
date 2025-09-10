@@ -106,6 +106,7 @@ export function useMovieSearch() {
     const querySearch = searchParams.get('search');
     const queryYear = searchParams.get('year');
     
+    // A new search is defined by search params being present in the URL
     const isNewSearch = querySearch !== null || queryYear !== null;
 
     if (savedStateString && !isNewSearch) {
@@ -119,6 +120,7 @@ export function useMovieSearch() {
             setMovies(savedState.movies || []);
             setPage(savedState.page || 1);
             setHasMore(savedState.hasMore === undefined ? true : savedState.hasMore);
+            // Restore scroll position after a short delay to allow content to render
             if(savedState.scrollPosition) {
                 setTimeout(() => window.scrollTo(0, savedState.scrollPosition), 0);
             }
@@ -128,13 +130,16 @@ export function useMovieSearch() {
             setLoading(false);
         }
     } else {
+        // This is a new search, so we reset state and fetch based on URL params
         const newSearchTerm = querySearch || '';
         const newYear = queryYear || '';
+        const newMediaType = searchParams.get('type') as 'movie' | 'tv' || 'movie';
+
         setSearchTerm(newSearchTerm);
         setYear(newYear);
         setSelectedGenres([]);
         setSortBy('popularity.desc');
-        setMediaType('movie');
+        setMediaType(newMediaType);
         setPage(1);
         
         startTransition(() => {
@@ -143,17 +148,17 @@ export function useMovieSearch() {
                 year: newYear,
                 genres: [],
                 sortBy: 'popularity.desc',
-                mediaType: 'movie',
+                mediaType: newMediaType,
                 page: 1,
                 append: false,
             });
         });
     }
     setIsInitialized(true);
-  }, []);
+  }, []); // This effect should only run once on component mount
 
   
-  // Effect to save state to sessionStorage whenever it changes
+  // Effect to save state to sessionStorage whenever it changes, but only after initialization
   useEffect(() => {
     if (!isInitialized) return;
     const stateToSave: MediaSearchState = {
@@ -170,12 +175,12 @@ export function useMovieSearch() {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
   }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType]);
   
-  // Effect to run search when non-text filters change
+  // Effect to run a new search when filters change, but not on initial load
   useEffect(() => {
     if (!isInitialized) return;
     handleSearch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedYear, selectedGenres, sortBy, mediaType, isInitialized]);
+  }, [debouncedYear, selectedGenres, sortBy]);
 
 
   const handleSearch = () => {
@@ -221,6 +226,7 @@ export function useMovieSearch() {
   };
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Save state before navigating
     const stateToSave: MediaSearchState = {
         searchTerm,
         year,
@@ -233,7 +239,8 @@ export function useMovieSearch() {
         scrollPosition: window.scrollY,
     };
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
-    router.push(href);
+    // Default navigation will be prevented if we use router.push, but since we are
+    // not preventing default, we just let the Link component handle it.
   };
   
   const handleMediaTypeChange = (newMediaType: 'movie' | 'tv') => {
@@ -243,6 +250,14 @@ export function useMovieSearch() {
         setYear('');
         setSelectedGenres([]);
         setSortBy('popularity.desc');
+        // Trigger a new search for the new media type
+        startTransition(() => {
+            runSearch({
+                mediaType: newMediaType,
+                page: 1,
+                sortBy: 'popularity.desc'
+            });
+        });
     }
   };
 

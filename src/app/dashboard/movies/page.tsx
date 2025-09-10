@@ -199,7 +199,7 @@ function MoviesPageContent() {
         </div>
       )}
 
-      {!loading && movies.length === 0 && (
+      {!loading && movies.length === 0 && isInitialized && (
          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">No results found</h3>
             <p className="text-sm text-muted-foreground mt-2">
