@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Loader2, Star, ListFilter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { User } from '@/ai/schemas/user-schemas';
+import type { FriendActivityItem } from '@/ai/schemas/friend-activity-schemas';
 import { getFriends } from '@/ai/flows/get-friends';
-import { getFriendActivity, type FriendActivityItem } from '@/ai/flows/get-friend-activity';
+import { getFriendActivity } from '@/ai/flows/get-friend-activity';
 
 
 export default function ActivityPage() {

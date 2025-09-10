@@ -9,44 +9,14 @@
  * for all friends or a specific friend, and allows for filtering by rating and time.
  *
  * @exports {getFriendActivity} - The main function to fetch the friend activity feed.
- * @exports {FriendActivityInput} - The Zod schema for the input of the getFriendActivity function.
- * @exports {FriendActivityOutput} - The Zod schema for the output of the getFriendActivity function.
- * @exports {FriendActivityItem} - The TypeScript type for a single item in the activity feed.
  */
 
-import { z } from 'zod';
 import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
+import { getMovieDetails } from '@/ai/flows/get-movie-details';
 import { getFriends } from '@/ai/flows/get-friends';
-import { UserSchema, type User } from '@/ai/schemas/user-schemas';
-
-
-// Define the schema for a single activity item
-const FriendActivityItemSchema = z.object({
-  friend: UserSchema,
-  movie: z.custom<MovieDetailsOutput>(),
-  rating: z.number(),
-  watchedAt: z.custom<Timestamp>(),
-  notes: z.string().optional(),
-});
-export type FriendActivityItem = z.infer<typeof FriendActivityItemSchema>;
-
-// Define the input schema for the flow
-export const FriendActivityInputSchema = z.object({
-  userId: z.string().describe("The ID of the user whose friend activity is being requested."),
-  friendId: z.string().optional().describe("Optional. The ID of a specific friend to fetch activity for."),
-  ratingRange: z.tuple([z.number(), z.number()]).optional().describe("Optional. A tuple representing the min and max rating to filter by."),
-  timeRange: z.enum(['all', 'week', 'month', 'year']).optional().describe("Optional. The time range to filter activity by."),
-});
-export type FriendActivityInput = z.infer<typeof FriendActivityInputSchema>;
-
-
-// Define the output schema for the flow
-export const FriendActivityOutputSchema = z.object({
-  activity: z.array(FriendActivityItemSchema),
-});
-export type FriendActivityOutput = z.infer<typeof FriendActivityOutputSchema>;
+import type { User } from '@/ai/schemas/user-schemas';
+import type { FriendActivityInput, FriendActivityOutput, FriendActivityItem } from '@/ai/schemas/friend-activity-schemas';
 
 
 /**
@@ -55,7 +25,7 @@ export type FriendActivityOutput = z.infer<typeof FriendActivityOutputSchema>;
  * @returns A promise that resolves to the friend activity output.
  */
 export async function getFriendActivity(input: FriendActivityInput): Promise<FriendActivityOutput> {
-  const { userId, friendId, ratingRange, timeRange } = input;
+  const { userId, friendId } = input;
   let friendsToQuery: User[] = [];
 
   // 1. Determine which friends to query for

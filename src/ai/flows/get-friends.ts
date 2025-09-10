@@ -7,28 +7,11 @@
  * Firestore database.
  *
  * @exports {getFriends} - The main function to fetch the friends list.
- * @exports {GetFriendsInput} - The Zod schema for the input of the getFriends function.
- * @exports {GetFriendsOutput} - The Zod schema for the output of the getFriends function.
  */
 
-import { z } from 'zod';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { UserSchema, type User } from '@/ai/schemas/user-schemas';
-
-
-// Define the input schema for the flow
-export const GetFriendsInputSchema = z.object({
-  userId: z.string().describe("The ID of the user whose friends are being requested."),
-});
-export type GetFriendsInput = z.infer<typeof GetFriendsInputSchema>;
-
-
-// Define the output schema for the flow
-export const GetFriendsOutputSchema = z.object({
-  friends: z.array(UserSchema),
-});
-export type GetFriendsOutput = z.infer<typeof GetFriendsOutputSchema>;
+import type { GetFriendsInput, GetFriendsOutput } from '@/ai/schemas/friend-schemas';
 
 
 /**
