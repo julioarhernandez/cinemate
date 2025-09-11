@@ -115,6 +115,7 @@ export function RecommendDialog({
 
     try {
       const batch = writeBatch(db);
+      const timestamp = serverTimestamp();
 
       // Create a record of the sent recommendation for the current user
       const sentRecRef = doc(collection(db, 'users', user.uid, 'sentRecommendations'));
@@ -122,12 +123,22 @@ export function RecommendDialog({
         movieId: movie.id,
         mediaType: movie.mediaType,
         recipientIds: recipientIds,
-        createdAt: serverTimestamp(),
+        createdAt: timestamp,
       });
       
-      // We are not creating incoming recommendations for friends in this version
-      // to keep it simple. The "Friend Activity" page will show what friends
-      // have watched, which serves a similar purpose.
+      // Create an "incoming recommendation" record for each recipient
+      for (const recipientId of recipientIds) {
+          const incomingRecRef = doc(collection(db, 'users', recipientId, 'incomingRecommendations'));
+          batch.set(incomingRecRef, {
+            movieId: movie.id,
+            mediaType: movie.mediaType,
+            fromId: user.uid,
+            fromName: user.displayName,
+            fromPhotoURL: user.photoURL || '',
+            createdAt: timestamp,
+            status: 'unread', // You can use this later to show notifications
+          });
+      }
 
       await batch.commit();
 
@@ -226,3 +237,5 @@ export function RecommendDialog({
     </Dialog>
   );
 }
+
+    

@@ -12,6 +12,7 @@ import {
   Loader2,
   Eye,
   Star,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +26,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
+import { getIncomingRecommendations, type IncomingRecommendation } from '@/ai/flows/incoming-recommendations';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -43,7 +45,9 @@ export default function DashboardPage() {
   const [friendCount, setFriendCount] = useState<number | null>(null);
   const [recommendationCount, setRecommendationCount] = useState<number | null>(null);
   const [friendActivity, setFriendActivity] = useState<FriendActivityItem[]>([]);
+  const [incomingRecommendations, setIncomingRecommendations] = useState<IncomingRecommendation[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
+  const [loadingRecs, setLoadingRecs] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -72,7 +76,7 @@ export default function DashboardPage() {
       
       const getRecommendationCount = async () => {
         try {
-            const recommendationsCol = collection(db, 'users', user.uid, 'recommendations');
+            const recommendationsCol = collection(db, 'users', user.uid, 'sentRecommendations');
             const snapshot = await getCountFromServer(recommendationsCol);
             setRecommendationCount(snapshot.data().count);
         } catch (error) {
@@ -171,15 +175,31 @@ export default function DashboardPage() {
         }
       }
 
+      const fetchRecommendations = async () => {
+        setLoadingRecs(true);
+        try {
+            const recs = await getIncomingRecommendations();
+            setIncomingRecommendations(recs);
+        } catch (error) {
+            console.error("Error fetching incoming recommendations: ", error);
+            setIncomingRecommendations([]);
+        } finally {
+            setLoadingRecs(false);
+        }
+      }
+
+
       getWatchedCount();
       getFriendCount();
       getRecommendationCount();
       fetchFriendActivity();
+      fetchRecommendations();
     } else {
       setWatchedCount(0);
       setFriendCount(0);
       setRecommendationCount(0);
       setLoadingActivity(false);
+      setLoadingRecs(false);
     }
   }, [user]);
 
@@ -199,11 +219,11 @@ export default function DashboardPage() {
       href: '/dashboard/friends',
     },
     {
-      title: 'AI Recommendations',
+      title: 'Sent Recommendations',
       value: recommendationCount,
-      icon: Sparkles,
+      icon: Gift,
       color: 'text-violet-500',
-      href: '/dashboard/ai-recommender',
+      href: '/dashboard/collections?tab=my-recommendations',
     },
   ];
 
@@ -242,28 +262,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Start a New Journey</CardTitle>
-            <CardDescription>
-              Ready for your next movie night?
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row">
-            <Button asChild className="w-full">
-              <Link href="/dashboard/movies">
-                <Film className="mr-2 h-4 w-4" /> Browse Movies
-              </Link>
-            </Button>
-            <Button asChild variant="secondary" className="w-full">
-              <Link href="/dashboard/ai-recommender">
-                <Sparkles className="mr-2 h-4 w-4" /> Get AI Suggestion
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Friend Activity</CardTitle>
@@ -324,7 +323,82 @@ export default function DashboardPage() {
              )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Recommended For You</CardTitle>
+            <CardDescription>
+              Movies your friends think you'd like.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             {loadingRecs ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+             ) : !incomingRecommendations || incomingRecommendations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                    <p>No new recommendations.</p>
+                    <p className="text-sm">Recommendations from friends will appear here.</p>
+                </div>
+             ) : (
+                <div className="space-y-4">
+                  {incomingRecommendations.map((item) => (
+                    <div key={item.id} className="flex items-start gap-4">
+                      <Avatar className="h-10 w-10 border">
+                         <AvatarImage src={item.from.photoURL} alt={item.from.name} />
+                         <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-bold text-foreground">{item.from.name}</span>
+                          {' '}recommended{' '}
+                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
+                        </div>
+                      </div>
+                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                        <Image
+                            src={item.movie.imageUrl}
+                            alt={item.movie.title}
+                            data-ai-hint={item.movie.imageHint}
+                            width={40}
+                            height={60}
+                            className="rounded-sm object-cover aspect-[2/3]"
+                          />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+             )}
+          </CardContent>
+        </Card>
       </div>
+
+       <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Start a New Journey</CardTitle>
+            <CardDescription>
+              Ready for your next movie night?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 sm:flex-row">
+            <Button asChild className="w-full">
+              <Link href="/dashboard/movies">
+                <Film className="mr-2 h-4 w-4" /> Browse Movies/Shows
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" className="w-full">
+              <Link href="/dashboard/ai-recommender">
+                <Sparkles className="mr-2 h-4 w-4" /> Get AI Suggestion
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
     </div>
   );
 }
+
+    
