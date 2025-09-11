@@ -82,6 +82,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
       });
       
       onNewRecommendation();
+      form.reset();
 
     } catch (error) {
       console.error(error);
@@ -135,7 +136,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
                     />
                   </FormControl>
                   <FormDescription>
-                    List movies or genres you like, or select from your collection.
+                    List movies or genres you like, or select from your library.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -157,7 +158,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
               </Button>
                <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(true)} disabled={loading} className="w-full">
                   <Library className="mr-2 h-4 w-4" />
-                  Select from Collection
+                  Select from Library
               </Button>
             </div>
 
@@ -190,7 +191,9 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
                   <Sparkles className="h-6 w-6 text-accent" />
                   We Recommend
                 </CardTitle>
-                <CardDescription>Here are a few movies you might enjoy. This has been added to your history below.</CardDescription>
+                <CardDescription>
+                    Here are a few movies you might enjoy. This has been added to your library.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {result.recommendations.map((rec, index) => (

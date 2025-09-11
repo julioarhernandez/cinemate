@@ -134,7 +134,7 @@ export function MovieSelectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Select Movies from Your Collection</DialogTitle>
+          <DialogTitle>Select Movies from Your Library</DialogTitle>
           <DialogDescription>
             Choose movies to base your AI recommendation on.
           </DialogDescription>
@@ -143,7 +143,7 @@ export function MovieSelectionDialog({
         <div className="relative my-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search your collection..."
+            placeholder="Search your library..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

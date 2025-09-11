@@ -33,9 +33,8 @@ import { useFriendRequestCount } from '@/hooks/use-friend-request-count';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/dashboard/movies', icon: Film, label: 'Movies/Shows' },
-  { href: '/dashboard/collections', icon: Library, label: 'My Collection' },
-  { href: '/dashboard/watchlist', icon: Bookmark, label: 'Watchlist' },
+  { href: '/dashboard/movies', icon: Film, label: 'Browse Media' },
+  { href: '/dashboard/collections', icon: Library, label: 'My Library' },
   { href: '/dashboard/friends', icon: Users, label: 'Friends' },
   { href: '/dashboard/activity', icon: Activity, label: 'Friend Activity' },
   {
