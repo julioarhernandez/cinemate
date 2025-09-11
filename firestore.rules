@@ -1,12 +1,9 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own profile
+    // Users can read/write their own profile and other authenticated users can read it
     match /users/{userId} {
       allow write: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow other authenticated users to read basic profile info for friend features
       allow read: if request.auth != null;
     }
 
@@ -28,7 +25,7 @@ service cloud.firestore {
       // Allow creating requests you send
       allow create: if request.auth != null &&
                        request.resource.data.from == request.auth.uid &&
-                       request.resource.data.keys().hasAll(["from", "to", "status", "fromName", "fromEmail", "fromPhotoURL", "toName", "toEmail", "toPhotoURL", "createdAt"]);
+                       request.resource.data.keys().hasAll(["from", "to", "status"]);
 
       // Allow deleting if you're sender or recipient
       allow delete: if request.auth != null &&
@@ -38,25 +35,24 @@ service cloud.firestore {
       // Allow updating only the status if you're the recipient
       allow update: if request.auth != null &&
                        resource.data.to == request.auth.uid &&
-                       request.resource.data.keys().hasOnly(["status", "declinedAt"]);
+                       request.resource.data.keys().hasOnly(["status"]);
     }
 
     // Friends lists
     match /users/{userId}/friends/{friendId} {
     	allow write: if request.auth.uid == userId || request.auth.uid == friendId;
-  
   		allow read: if request.auth.uid == userId ||
                exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
-
-  		allow delete: if request.auth.uid == userId;  
+  		allow delete: if request.auth.uid == userId;
 		}
-    
+
     // Ratings & Watched list
     match /users/{userId}/ratings/{ratingId} {
       // A user can read/write their own ratings.
       allow write: if request.auth.uid == userId;
       // A user can read a friend's rating only if it is not private.
-      allow read: if request.auth.uid == userId || (exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
+      allow read: if request.auth.uid == userId ||
+                     (exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
                      resource.data.isPrivate != true);
     }
 
@@ -64,15 +60,22 @@ service cloud.firestore {
     match /users/{userId}/recommendations/{recommendationId} {
        allow read, write: if request.auth.uid == userId;
     }
-    
-    // User's sent recommendations history
+
+    // User-sent Recommendations history
     match /users/{userId}/sentRecommendations/{recommendationId} {
-      allow read, write: if request.auth.uid == userId;
+       allow read, write: if request.auth.uid == userId;
     }
 
-    // User's incoming recommendations from friends
+   	// Incoming recommendations from friends
     match /users/{userId}/incomingRecommendations/{recommendationId} {
-      allow read, write: if request.auth.uid == userId;
+      // Allow a user to read their own incoming recommendations
+      allow read: if request.auth.uid == userId;
+      
+      // Allow a user to create a recommendation for another user (userId)
+      // IF they are friends with that user.
+      allow create: if request.auth != null &&
+      								 request.resource.data.fromId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
     }
   }
 }
