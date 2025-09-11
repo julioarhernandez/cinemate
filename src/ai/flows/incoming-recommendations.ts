@@ -8,7 +8,7 @@
  * @exports IncomingRecommendation - The type definition for a processed incoming recommendation.
  */
 
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from './get-movie-details';
 
@@ -23,15 +23,14 @@ export interface IncomingRecommendation {
     createdAt: Timestamp;
 }
 
-export async function getIncomingRecommendations(): Promise<IncomingRecommendation[]> {
-    const user = auth.currentUser;
-    if (!user) {
-        console.log("No authenticated user found.");
+export async function getIncomingRecommendations(userId: string): Promise<IncomingRecommendation[]> {
+    if (!userId) {
+        console.log("No user ID provided.");
         return [];
     }
 
     try {
-        const recsRef = collection(db, 'users', user.uid, 'incomingRecommendations');
+        const recsRef = collection(db, 'users', userId, 'incomingRecommendations');
         const q = query(recsRef, orderBy('createdAt', 'desc'), limit(10));
         const snapshot = await getDocs(q);
 
@@ -73,5 +72,3 @@ export async function getIncomingRecommendations(): Promise<IncomingRecommendati
         return [];
     }
 }
-
-    

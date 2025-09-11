@@ -178,7 +178,7 @@ export default function DashboardPage() {
       const fetchRecommendations = async () => {
         setLoadingRecs(true);
         try {
-            const recs = await getIncomingRecommendations();
+            const recs = await getIncomingRecommendations(user.uid);
             setIncomingRecommendations(recs);
         } catch (error) {
             console.error("Error fetching incoming recommendations: ", error);
@@ -400,5 +400,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
