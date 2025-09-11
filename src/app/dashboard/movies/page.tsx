@@ -114,19 +114,34 @@ function MoviesPageContent() {
   // Handle clicking outside the filter panel to close it
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
-        setIsFiltersOpen(false);
+      if (!(event.target instanceof Element)) {
+        return;
       }
+      
+      const target = event.target;
+  
+      // Check if the click is within the filter panel itself
+      if (filtersRef.current && filtersRef.current.contains(target)) {
+        return;
+      }
+  
+      // Check if the click is inside any Radix Popover content
+      if (target.closest('[data-radix-popper-content-wrapper]')) {
+        return;
+      }
+  
+      // If none of the above, close the filter panel
+      setIsFiltersOpen(false);
     }
-
+  
     if (isFiltersOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     } else {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     }
-
+  
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isFiltersOpen]);
   
