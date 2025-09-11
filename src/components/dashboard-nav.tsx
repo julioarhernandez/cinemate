@@ -57,7 +57,7 @@ export function DashboardNav() {
   
   return (
     <>
-      <SidebarHeader className="border-b">
+      <SidebarHeader>
         <div className="flex items-center justify-between p-2">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" asChild>
@@ -71,18 +71,19 @@ export function DashboardNav() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="p-2">
         <SidebarMenu>
           {navItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
+                size="lg"
                 isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
                 onClick={handleLinkClick}
                 className={cn(
                   'justify-start',
                    (pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')) &&
-                    'bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary dark:bg-primary/20 dark:text-white'
+                    'bg-sidebar-accent text-sidebar-accent-foreground'
                 )}
                 tooltip={item.label}
               >

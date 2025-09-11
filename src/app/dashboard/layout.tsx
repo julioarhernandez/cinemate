@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        <Sidebar collapsible="icon" className="border-r bg-background">
+        <Sidebar collapsible="icon" className="bg-sidebar text-sidebar-foreground">
           <DashboardNav />
         </Sidebar>
         <div className="flex-1">
