@@ -268,7 +268,7 @@ export default function DashboardPage() {
             console.error("Error fetching incoming recommendations:", error);
             setIncomingRecommendations([]);
         } finally {
-            setLoadingRecs(false);
+          setLoadingRecs(false);
         }
       }
 
@@ -451,6 +451,8 @@ export default function DashboardPage() {
                            </Avatar>
                            <p>From <span className="font-semibold">{item.from.name}</span></p>
                         </div>
+                      </div>
+                      <div>
                         <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
                             <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
                         </Button>

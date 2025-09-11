@@ -714,7 +714,7 @@ export default function CollectionsPage() {
                                     </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button size="sm" variant="ghost"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
+                                            <Button size="sm" variant="outline"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
