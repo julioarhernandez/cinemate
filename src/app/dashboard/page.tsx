@@ -344,7 +344,7 @@ export default function DashboardPage() {
                         <p className="text-sm text-muted-foreground">
                           <span className="font-bold text-foreground">{item.friend.displayName}</span>
                           {' '}watched{' '}
-                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
+                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="block font-bold hover:underline">{item.movie.title}</Link>
                         </p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
@@ -405,7 +405,7 @@ export default function DashboardPage() {
                         <p className="text-sm text-muted-foreground">
                           <span className="font-bold text-foreground">{item.from.name}</span>
                           {' '}recommended{' '}
-                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold text-foreground hover:underline">{item.movie.title}</Link>
+                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="block font-bold hover:underline">{item.movie.title}</Link>
                         </p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
