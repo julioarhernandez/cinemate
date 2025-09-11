@@ -74,7 +74,7 @@ interface Friend {
 export default function FriendsPage() {
   const [user, authLoading] = useAuthState(auth);
   const { toast } = useToast();
-  const friendRequestCount = useFriendRequestCount();
+  const { incomingCount } = useFriendRequestCount();
   
   const [searchEmail, setSearchEmail] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -124,8 +124,8 @@ export default function FriendsPage() {
 
       // 3. Check if a request already exists (either way)
       const requestsRef = collection(db, 'friendRequests');
-      const sentRequestQuery = query(requestsRef, where('from', '==', user.uid), where('to', '==', foundUserId));
-      const receivedRequestQuery = query(requestsRef, where('from', '==', foundUserId), where('to', '==', user.uid));
+      const sentRequestQuery = query(requestsRef, where('from', '==', user.uid), where('to', '==', foundUserId), where('status', '==', 'pending'));
+      const receivedRequestQuery = query(requestsRef, where('from', '==', foundUserId), where('to', '==', user.uid), where('status', '==', 'pending'));
       
       const [sentSnapshot, receivedSnapshot] = await Promise.all([
           getDocs(sentRequestQuery),
@@ -284,10 +284,8 @@ export default function FriendsPage() {
         if (!user) return;
         try {
             const requestRef = doc(db, 'friendRequests', requestId);
-            await updateDoc(requestRef, {
-                status: 'declined',
-                declinedAt: serverTimestamp(),
-            });
+            // Instead of updating, we just delete it. The sender will see it disappear from their "Sent" list.
+            await deleteDoc(requestRef);
             toast({ title: 'Request declined.' });
         } catch (error) {
             console.error("Error declining friend request:", error);
@@ -334,38 +332,6 @@ export default function FriendsPage() {
         }
     }
 
-    // Check for declined requests on component mount
-    useEffect(() => {
-        if (!user) return;
-
-        const checkDeclinedRequests = async () => {
-            const requestsRef = collection(db, 'friendRequests');
-            const q = query(
-                requestsRef,
-                where('from', '==', user.uid),
-                where('status', '==', 'declined')
-            );
-            const snapshot = await getDocs(q);
-            if (snapshot.empty) return;
-
-            const batch = writeBatch(db);
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                toast({
-                    variant: 'destructive',
-                    title: 'Friend Request Declined',
-                    description: `Your friend request to ${data.toEmail} was declined.`,
-                });
-                batch.delete(doc.ref); // Clean up after notifying
-            });
-
-            await batch.commit();
-        };
-
-        checkDeclinedRequests();
-    }, [user, toast]);
-
-
   return (
     <div className="space-y-8">
       <div>
@@ -408,9 +374,9 @@ export default function FriendsPage() {
           <TabsTrigger value="friends">My Friends ({friends.length})</TabsTrigger>
           <TabsTrigger value="requests">
             Friend Requests
-            {friendRequestCount > 0 && (
+            {incomingCount > 0 && (
                 <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                    {friendRequestCount}
+                    {incomingCount}
                 </span>
             )}
           </TabsTrigger>

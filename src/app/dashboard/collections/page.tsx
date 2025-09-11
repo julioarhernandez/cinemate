@@ -13,12 +13,12 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2, ListFilter, EyeOff, Bookmark, Trash2, Sparkles, History, Share2 } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, EyeOff, Bookmark, Trash2, Sparkles, History, Share2, Gift, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getDocs, query, where, doc, setDoc, serverTimestamp, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc, serverTimestamp, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -71,6 +71,17 @@ interface UserRecommendation {
     recipients: {id: string, name: string}[];
 }
 
+interface IncomingRecommendation {
+    id: string;
+    movie: MovieDetailsOutput;
+    from: {
+        id: string;
+        name: string;
+        photoURL?: string;
+    };
+    createdAt: Timestamp;
+}
+
 interface User {
   id: string;
   displayName: string;
@@ -85,6 +96,7 @@ export default function CollectionsPage() {
   const [watchlistMovies, setWatchlistMovies] = useState<MovieDetailsOutput[]>([]);
   const [aiRecommendationHistory, setAiRecommendationHistory] = useState<AiRecommendation[]>([]);
   const [userRecommendations, setUserRecommendations] = useState<UserRecommendation[]>([]);
+  const [incomingRecommendations, setIncomingRecommendations] = useState<IncomingRecommendation[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
@@ -173,6 +185,31 @@ export default function CollectionsPage() {
             } as UserRecommendation;
         }));
         setUserRecommendations(userRecsData.filter(r => r.movie.id !== 0));
+
+        // Fetch incoming recommendations
+        const incomingRecsRef = collection(db, 'users', user.uid, 'incomingRecommendations');
+        const incomingRecsQuery = query(incomingRecsRef, orderBy('createdAt', 'desc'));
+        const incomingRecsSnapshot = await getDocs(incomingRecsQuery);
+        
+        const incomingRecsPromises = incomingRecsSnapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            const movieDetails = await getMovieDetails({ id: data.movieId, mediaType: data.mediaType || 'movie' });
+            if (!movieDetails || movieDetails.title === 'Unknown Media') return null;
+
+            return {
+                id: doc.id,
+                movie: movieDetails,
+                from: {
+                    id: data.fromId,
+                    name: data.fromName,
+                    photoURL: data.fromPhotoURL,
+                },
+                createdAt: data.createdAt,
+            };
+        });
+        
+        const incomingRecs = await Promise.all(incomingRecsPromises);
+        setIncomingRecommendations(incomingRecs.filter((r): r is IncomingRecommendation => r !== null));
 
 
     } catch (error) {
@@ -269,6 +306,19 @@ export default function CollectionsPage() {
     }
   };
 
+  const handleDismissRecommendation = async (recommendationId: string) => {
+    if (!user) return;
+    try {
+        const recDocRef = doc(db, 'users', user.uid, 'incomingRecommendations', recommendationId);
+        await deleteDoc(recDocRef);
+        setIncomingRecommendations(prev => prev.filter(r => r.id !== recommendationId));
+        toast({ title: 'Recommendation dismissed.' });
+    } catch (error) {
+        console.error('Failed to dismiss recommendation:', error);
+        toast({ variant: 'destructive', title: 'Could not dismiss recommendation.' });
+    }
+  }
+
 
   useEffect(() => {
     setCurrentPage(1);
@@ -297,6 +347,7 @@ export default function CollectionsPage() {
                 <TabsTrigger value="watchlist">Watchlist ({watchlistMovies.length})</TabsTrigger>
                 <TabsTrigger value="ai-recommendations">AI Suggestions ({aiRecommendationHistory.length})</TabsTrigger>
                 <TabsTrigger value="my-recommendations">My Recs ({userRecommendations.length})</TabsTrigger>
+                <TabsTrigger value="incoming-recommendations">Incoming Recs ({incomingRecommendations.length})</TabsTrigger>
             </TabsList>
             <div className="relative w-full sm:w-auto sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -586,7 +637,78 @@ export default function CollectionsPage() {
             )}
         </TabsContent>
 
+        {/* Incoming Recommendations Tab */}
+        <TabsContent value="incoming-recommendations" className="mt-6">
+             {!loading && incomingRecommendations.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
+                    <Gift className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-bold tracking-tight">No incoming recommendations</h3>
+                    <p className="text-sm text-muted-foreground mt-2">When a friend recommends a movie to you, it will appear here.</p>
+                </div>
+            )}
+            {incomingRecommendations.length > 0 && (
+                <div className="space-y-4">
+                    {incomingRecommendations
+                        .filter(item => !searchTerm || item.movie.title.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(item => (
+                        <Card key={item.id} className="p-4">
+                            <div className="flex items-start gap-4">
+                                <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
+                                    <Image
+                                        src={item.movie.imageUrl}
+                                        alt={item.movie.title}
+                                        data-ai-hint={item.movie.imageHint}
+                                        width={80}
+                                        height={120}
+                                        className="rounded-sm object-cover aspect-[2/3]"
+                                    />
+                                </Link>
+                                <div className="flex-1">
+                                    <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                                        <h3 className="text-lg font-bold hover:underline">{item.movie.title} ({item.movie.year})</h3>
+                                    </Link>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                        {formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}
+                                    </p>
+                                    <div className="text-sm flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={item.from.photoURL} alt={item.from.name} />
+                                            <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                                        </Avatar>
+                                        <p>Recommended by <span className="font-semibold">{item.from.name}</span></p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button size="sm" variant="outline"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                            <AlertDialogTitle>Dismiss Recommendation?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to dismiss this recommendation for "{item.movie.title}"?
+                                            </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDismissRecommendation(item.id)} variant="destructive">
+                                                Dismiss
+                                            </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </TabsContent>
+
      </Tabs>
     </div>
   );
 }
+
+    

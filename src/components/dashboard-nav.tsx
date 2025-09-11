@@ -47,7 +47,7 @@ const navItems = [
 export function DashboardNav() {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
-  const friendRequestCount = useFriendRequestCount();
+  const { incomingCount } = useFriendRequestCount();
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -89,9 +89,9 @@ export function DashboardNav() {
                 <Link href={item.href} className="relative">
                   <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
-                   {item.href === '/dashboard/friends' && friendRequestCount > 0 && (
+                   {item.href === '/dashboard/friends' && incomingCount > 0 && (
                      <span className="absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                        {friendRequestCount}
+                        {incomingCount}
                     </span>
                   )}
                 </Link>
@@ -107,3 +107,5 @@ export function DashboardNav() {
     </>
   );
 }
+
+    

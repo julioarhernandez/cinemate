@@ -9,12 +9,10 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 export function useFriendRequestCount() {
   const [user] = useAuthState(auth);
   const [incomingCount, setIncomingCount] = useState(0);
-  const [sentCount, setSentCount] = useState(0);
 
   useEffect(() => {
     if (!user) {
       setIncomingCount(0);
-      setSentCount(0);
       return;
     }
 
@@ -29,21 +27,13 @@ export function useFriendRequestCount() {
       setIncomingCount(0);
     });
 
-    // Listener for sent requests
-    const sentQuery = query(requestsRef, where('from', '==', user.uid), where('status', '==', 'pending'));
-    const unsubscribeSent = onSnapshot(sentQuery, (snapshot) => {
-      setSentCount(snapshot.size);
-    }, (error) => {
-        console.error("Failed to get sent friend request count:", error);
-        setSentCount(0);
-    });
-
 
     return () => {
         unsubscribeIncoming();
-        unsubscribeSent();
     };
   }, [user]);
 
-  return incomingCount + sentCount;
+  return { incomingCount };
 }
+
+    
