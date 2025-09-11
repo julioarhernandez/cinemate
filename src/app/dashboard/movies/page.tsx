@@ -44,6 +44,7 @@ function MoviesPageContent() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
 
   const {
     searchTerm,
@@ -109,6 +110,25 @@ function MoviesPageContent() {
       fetchUserRatings();
     }
   }, [user, authLoading]);
+
+  // Handle clicking outside the filter panel to close it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+        setIsFiltersOpen(false);
+      }
+    }
+
+    if (isFiltersOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isFiltersOpen]);
   
   const moviesWithUserData = useMemo(() => {
     return movies.map(movie => {
@@ -187,7 +207,7 @@ function MoviesPageContent() {
         </form>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-between">
-            <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
+            <Collapsible ref={filtersRef} open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
                 <CollapsibleTrigger asChild>
                     <Button
                       variant="outline"
@@ -523,5 +543,3 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
-
-    
