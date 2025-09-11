@@ -12,10 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Clapperboard } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, db, doc, setDoc, serverTimestamp, getAdditionalUserInfo } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { FirebaseError } from 'firebase/app';
+import { Logo } from '@/components/logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -76,11 +76,8 @@ export default function LoginPage() {
         fill
         className="absolute inset-0 -z-10 h-full w-full object-cover opacity-20"
       />
-      <div className="absolute top-8 flex items-center gap-2">
-        <Clapperboard className="h-8 w-8 text-primary" />
-        <h1 className="font-headline text-3xl font-bold text-foreground">
-          MovieCircle
-        </h1>
+      <div className="absolute top-8">
+        <Logo />
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">

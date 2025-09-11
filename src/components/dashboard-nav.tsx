@@ -16,7 +16,6 @@ import {
 
 import { cn } from '@/lib/utils';
 import {
-  Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
@@ -25,10 +24,10 @@ import {
   SidebarTrigger,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { useSidebar } from '@/components/ui/sidebar';
 import { UserProfile } from '@/components/user-profile';
 import { useFriendRequestCount } from '@/hooks/use-friend-request-count';
+import { Logo } from '@/components/logo';
 
 
 const navItems = [
@@ -57,16 +56,12 @@ export function DashboardNav() {
   
   return (
     <>
-      <SidebarHeader>
-        <div className="flex items-center justify-between p-2">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="/dashboard">
-                  <Clapperboard className="h-6 w-6 text-primary" />
-                </Link>
-              </Button>
-              <h2 className="font-headline text-xl font-bold">MovieCircle</h2>
-            </div>
+      <SidebarHeader className="p-4">
+        <div className="flex items-center justify-between">
+            <Link href="/dashboard">
+              <Logo className="group-data-[collapsible=icon]:hidden" />
+              <Clapperboard className="h-8 w-8 text-primary hidden group-data-[collapsible=icon]:block" />
+            </Link>
           <SidebarTrigger className="md:hidden" />
         </div>
       </SidebarHeader>
