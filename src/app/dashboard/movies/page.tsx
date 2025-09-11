@@ -44,7 +44,6 @@ function MoviesPageContent() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
-  const filtersRef = useRef<HTMLDivElement>(null);
 
   const {
     searchTerm,
@@ -111,33 +110,6 @@ function MoviesPageContent() {
     }
   }, [user, authLoading]);
   
-  // Effect to handle clicks outside the filter menu
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      // Do nothing if the click is inside the filter collapsible area
-      if (filtersRef.current && filtersRef.current.contains(target)) {
-        return;
-      }
-      // Do nothing if the click is inside any popover content
-      if (target instanceof Element && target.closest('[data-radix-popover-content-wrapper]')) {
-        return;
-      }
-      // Otherwise, close the filters
-      setIsFiltersOpen(false);
-    }
-
-    if (isFiltersOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isFiltersOpen]);
-
   const moviesWithUserData = useMemo(() => {
     return movies.map(movie => {
       const userData = userRatings[movie.id.toString()];
@@ -234,7 +206,7 @@ function MoviesPageContent() {
                         )}
                     </Button>
                 </CollapsibleTrigger>
-              <CollapsibleContent ref={filtersRef} className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
+              <CollapsibleContent className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
                 <div className="rounded-lg border p-4 bg-background w-[280px]">
                     <div className="flex justify-between items-center mb-4">
                         <h4 className="text-sm font-semibold">Filters</h4>
@@ -273,7 +245,7 @@ function MoviesPageContent() {
                                     )}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0" data-radix-popover-content-wrapper>
+                                <PopoverContent className="w-[240px] p-0">
                                     <Command>
                                         <CommandInput placeholder="Search language..." />
                                         <CommandEmpty>No language found.</CommandEmpty>
@@ -329,7 +301,7 @@ function MoviesPageContent() {
                                     )}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0" data-radix-popover-content-wrapper>
+                                <PopoverContent className="w-[240px] p-0">
                                     <Command>
                                         <CommandInput placeholder="Search country..." />
                                         <CommandEmpty>No country found.</CommandEmpty>
@@ -403,7 +375,7 @@ function MoviesPageContent() {
                                     </div>
                                   </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-[240px] p-0" align="start" data-radix-popover-content-wrapper>
+                              <PopoverContent className="w-[240px] p-0" align="start">
                                   <Command>
                                       <CommandInput placeholder="Search genres..." />
                                       <CommandList>
@@ -551,3 +523,5 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
+
+    
