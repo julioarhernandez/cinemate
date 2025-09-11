@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -53,14 +54,14 @@ export default function RegisterPage() {
       <div className="absolute top-8 flex items-center gap-2">
         <Clapperboard className="h-8 w-8 text-primary" />
         <h1 className="font-headline text-3xl font-bold text-foreground">
-          CineMate
+          MovieCircle
         </h1>
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Join CineMate and start your movie journey
+            Join MovieCircle and start your movie journey
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

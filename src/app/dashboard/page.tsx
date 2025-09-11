@@ -318,7 +318,7 @@ export default function DashboardPage() {
           Welcome back, {user?.displayName?.split(' ')[0] || 'there'}!
         </h1>
         <p className="text-muted-foreground">
-          Here's a quick look at your CineMate world.
+          Here's a quick look at your MovieCircle world.
         </p>
       </div>
 

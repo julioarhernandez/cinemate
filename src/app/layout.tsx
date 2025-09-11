@@ -1,10 +1,11 @@
+
 import type { Metadata } from 'next';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'CineMate',
+  title: 'MovieCircle',
   description:
     'Discover, rate, and share movies with friends. Get AI-powered recommendations.',
 };

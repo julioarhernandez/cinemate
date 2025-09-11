@@ -65,7 +65,7 @@ export function DashboardNav() {
                   <Clapperboard className="h-6 w-6 text-primary" />
                 </Link>
               </Button>
-              <h2 className="font-headline text-xl font-bold">CineMate</h2>
+              <h2 className="font-headline text-xl font-bold">MovieCircle</h2>
             </div>
           <SidebarTrigger className="md:hidden" />
         </div>
@@ -107,5 +107,3 @@ export function DashboardNav() {
     </>
   );
 }
-
-    

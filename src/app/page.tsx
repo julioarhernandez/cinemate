@@ -79,7 +79,7 @@ export default function LoginPage() {
       <div className="absolute top-8 flex items-center gap-2">
         <Clapperboard className="h-8 w-8 text-primary" />
         <h1 className="font-headline text-3xl font-bold text-foreground">
-          CineMate
+          MovieCircle
         </h1>
       </div>
       <Card className="w-full max-w-sm">

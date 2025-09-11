@@ -164,7 +164,7 @@ export function RecommendDialog({
         <DialogHeader>
           <DialogTitle>Recommend Movie</DialogTitle>
           <DialogDescription>
-            Share this movie with your friends on CineMate.
+            Share this movie with your friends on MovieCircle.
           </DialogDescription>
         </DialogHeader>
 
@@ -237,5 +237,3 @@ export function RecommendDialog({
     </Dialog>
   );
 }
-
-    
