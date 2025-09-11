@@ -26,7 +26,6 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
-import { getIncomingRecommendations, type IncomingRecommendation } from '@/ai/flows/incoming-recommendations';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,6 +36,17 @@ interface FriendActivityItem {
   movie: MovieDetailsOutput;
   rating: number;
   watchedAt: Timestamp;
+}
+
+export interface IncomingRecommendation {
+    id: string;
+    movie: MovieDetailsOutput;
+    from: {
+        id: string;
+        name: string;
+        photoURL?: string;
+    };
+    createdAt: Timestamp;
 }
 
 export default function DashboardPage() {
@@ -177,11 +187,53 @@ export default function DashboardPage() {
 
       const fetchRecommendations = async () => {
         setLoadingRecs(true);
+        if (!user) {
+            setLoadingRecs(false);
+            return;
+        }
+
         try {
-            const recs = await getIncomingRecommendations(user.uid);
-            setIncomingRecommendations(recs);
+            const recsRef = collection(db, 'users', user.uid, 'incomingRecommendations');
+            const q = query(recsRef, orderBy('createdAt', 'desc'), limit(10));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                setIncomingRecommendations([]);
+                setLoadingRecs(false);
+                return;
+            }
+
+            const recommendationsPromises = snapshot.docs.map(async (doc) => {
+                const data = doc.data();
+                const movieDetails = await getMovieDetails({
+                    id: data.movieId,
+                    mediaType: data.mediaType || 'movie',
+                });
+                
+                if (!movieDetails || movieDetails.title === 'Unknown Media') {
+                    return null;
+                }
+
+                return {
+                    id: doc.id,
+                    movie: movieDetails,
+                    from: {
+                        id: data.fromId,
+                        name: data.fromName,
+                        photoURL: data.fromPhotoURL,
+                    },
+                    createdAt: data.createdAt,
+                };
+            });
+
+            const recommendations = await Promise.all(recommendationsPromises);
+            
+            // Filter out any null results (e.g., movie not found)
+            const validRecommendations = recommendations.filter((rec): rec is IncomingRecommendation => rec !== null);
+            setIncomingRecommendations(validRecommendations);
+
         } catch (error) {
-            console.error("Error fetching incoming recommendations: ", error);
+            console.error("Error fetching incoming recommendations:", error);
             setIncomingRecommendations([]);
         } finally {
             setLoadingRecs(false);
@@ -400,3 +452,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
