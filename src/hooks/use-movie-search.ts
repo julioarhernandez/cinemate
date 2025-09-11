@@ -18,6 +18,7 @@ interface MediaSearchState {
     mediaType: 'movie' | 'tv';
     language: string;
     cast: string;
+    originCountry: string;
     movies: MediaItem[];
     page: number;
     hasMore: boolean;
@@ -39,6 +40,7 @@ export function useMovieSearch() {
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
   const [language, setLanguage] = useState('');
   const [cast, setCast] = useState('');
+  const [originCountry, setOriginCountry] = useState('');
 
   const [movies, setMovies] = useState<MediaItem[]>([]);
   const [page, setPage] = useState(1);
@@ -55,6 +57,7 @@ export function useMovieSearch() {
     mediaType: 'movie' | 'tv';
     language?: string;
     withCast?: string;
+    originCountry?: string;
     page: number;
     append?: boolean;
   }) => {
@@ -74,6 +77,7 @@ export function useMovieSearch() {
         mediaType: options.mediaType,
         language: options.language,
         withCast: options.withCast,
+        originCountry: options.originCountry,
       });
 
       if (options.append) {
@@ -126,6 +130,7 @@ export function useMovieSearch() {
             setMediaType(savedState.mediaType || 'movie');
             setLanguage(savedState.language || '');
             setCast(savedState.cast || '');
+            setOriginCountry(savedState.originCountry || '');
             setMovies(savedState.movies || []);
             setPage(savedState.page || 1);
             setHasMore(savedState.hasMore === undefined ? true : savedState.hasMore);
@@ -151,6 +156,7 @@ export function useMovieSearch() {
         setMediaType(newMediaType);
         setLanguage('');
         setCast('');
+        setOriginCountry('');
         setPage(1);
         
         startTransition(() => {
@@ -181,13 +187,14 @@ export function useMovieSearch() {
         mediaType,
         language,
         cast,
+        originCountry,
         movies,
         page,
         hasMore,
         scrollPosition: window.scrollY
     };
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType, language, cast]);
+  }, [searchTerm, year, selectedGenres, sortBy, movies, page, hasMore, isInitialized, mediaType, language, cast, originCountry]);
   
 
   const handleSearch = () => {
@@ -201,6 +208,7 @@ export function useMovieSearch() {
             mediaType: mediaType,
             language: language,
             withCast: cast,
+            originCountry: originCountry,
             page: 1,
             append: false,
         });
@@ -220,6 +228,7 @@ export function useMovieSearch() {
         mediaType,
         language,
         withCast: cast,
+        originCountry,
         page: nextPage,
         append: true,
       });
@@ -236,6 +245,7 @@ export function useMovieSearch() {
         mediaType,
         language,
         cast,
+        originCountry,
         movies,
         page,
         hasMore,
@@ -254,6 +264,7 @@ export function useMovieSearch() {
         setSelectedGenres([]);
         setLanguage('');
         setCast('');
+        setOriginCountry('');
         setSortBy('popularity.desc');
         setMovies([]);
         setHasMore(true);
@@ -275,6 +286,7 @@ export function useMovieSearch() {
     setSelectedGenres([]);
     setLanguage('');
     setCast('');
+    setOriginCountry('');
     
     // Immediately trigger a new search with the cleared filters.
     setPage(1);
@@ -287,6 +299,7 @@ export function useMovieSearch() {
             mediaType: mediaType,
             language: '',
             withCast: '',
+            originCountry: '',
             page: 1,
             append: false,
         });
@@ -309,6 +322,8 @@ export function useMovieSearch() {
     setLanguage,
     cast,
     setCast,
+    originCountry,
+    setOriginCountry,
     movies,
     page,
     setPage,

@@ -41,7 +41,7 @@ export async function searchMovies(
   input: SearchMoviesInput
 ): Promise<SearchMoviesOutput> {
   const validatedInput = SearchMoviesInputSchema.parse(input);
-  const { query, year, genres, page = 1, sortBy = 'popularity.desc', mediaType = 'movie', language, withCast: castName } = validatedInput;
+  const { query, year, genres, page = 1, sortBy = 'popularity.desc', mediaType = 'movie', language, withCast: castName, originCountry } = validatedInput;
 
   if (!process.env.TMDB_API_KEY) {
     console.error('TMDB_API_KEY is not set. Returning default movies.');
@@ -87,6 +87,9 @@ export async function searchMovies(
     }
     if (language) {
       params.append('with_original_language', language);
+    }
+    if (originCountry) {
+        params.append('with_origin_country', originCountry);
     }
     if (castName) {
         const personId = await getPersonId(castName);

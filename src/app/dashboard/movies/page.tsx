@@ -20,7 +20,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { genres as allGenres, languages as allLanguages } from '@/lib/movies';
+import { genres as allGenres, languages as allLanguages, countries as allCountries } from '@/lib/movies';
 import { useMovieSearch } from '@/hooks/use-movie-search';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,6 +43,7 @@ function MoviesPageContent() {
   const [userRatings, setUserRatings] = useState<UserRatings>({});
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
+  const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -69,6 +70,8 @@ function MoviesPageContent() {
     handleMediaTypeChange,
     handleSearch,
     resetFilters,
+    originCountry,
+    setOriginCountry
   } = useMovieSearch();
 
   const activeFilterCount = useMemo(() => {
@@ -77,12 +80,13 @@ function MoviesPageContent() {
     if (selectedGenres.length > 0) count++;
     if (language) count++;
     if (cast) count++;
+    if (originCountry) count++;
     return count;
-  }, [year, selectedGenres, language, cast]);
+  }, [year, selectedGenres, language, cast, originCountry]);
 
   const isDiscoveryFiltered = useMemo(() => {
-    return selectedGenres.length > 0 || !!language || !!cast;
-  }, [selectedGenres, language, cast]);
+    return selectedGenres.length > 0 || !!language || !!cast || !!originCountry;
+  }, [selectedGenres, language, cast, originCountry]);
 
   useEffect(() => {
     if (isDiscoveryFiltered && searchTerm) {
@@ -204,7 +208,7 @@ function MoviesPageContent() {
              {isDiscoveryFiltered && (
               <Alert variant="default" className="text-xs border-none p-0">
                 <AlertDescription>
-                  Advanced filters (Genre, Language, Cast) only apply when discovering media, not when searching with keywords.
+                  Advanced filters (Genre, Language, Cast, Country) only apply when discovering media, not when searching with keywords.
                 </AlertDescription>
               </Alert>
             )}
@@ -302,6 +306,63 @@ function MoviesPageContent() {
                                 </PopoverContent>
                             </Popover>
                         </div>
+                        
+                        <div className="space-y-2">
+                            <Label>Origin Country</Label>
+                             <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={countryPopoverOpen}
+                                    className="w-full justify-between font-normal"
+                                    >
+                                    <span className="truncate">
+                                      {originCountry
+                                          ? allCountries.find((country) => country.iso_3166_1 === originCountry)?.english_name
+                                          : "Select country..."}
+                                    </span>
+                                    {originCountry ? (
+                                      <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setOriginCountry('')}}/>
+                                    ) : (
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[240px] p-0" data-radix-popover-content-wrapper>
+                                    <Command>
+                                        <CommandInput placeholder="Search country..." />
+                                        <CommandEmpty>No country found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <ScrollArea className='h-40'>
+                                            {allCountries.map((country) => (
+                                                <CommandItem
+                                                  key={country.iso_3166_1}
+                                                  value={country.english_name}
+                                                  onSelect={(currentValue) => {
+                                                    const selectedCountry = allCountries.find(c => c.english_name.toLowerCase() === currentValue.toLowerCase());
+                                                    if (selectedCountry) {
+                                                      setOriginCountry(selectedCountry.iso_3166_1 === originCountry ? "" : selectedCountry.iso_3166_1);
+                                                    }
+                                                    setCountryPopoverOpen(false);
+                                                  }}
+                                                >
+                                                <Check
+                                                    className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    originCountry === country.iso_3166_1 ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {country.english_name}
+                                                </CommandItem>
+                                            ))}
+                                            </ScrollArea>
+                                        </CommandGroup>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
 
                          <div className="space-y-2">
                             <Label>Cast Member</Label>
