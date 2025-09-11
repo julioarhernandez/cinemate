@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { EyeOff, Star, Bookmark } from 'lucide-react';
+import { EyeOff, Star, Bookmark, Share2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { Skeleton } from './ui/skeleton';
+import { RecommendDialog } from './recommend-dialog';
 
 const StarRatingInput = ({
   rating,
@@ -55,6 +56,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   const [userRating, setUserRating] = useState(0);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isRecommendDialogOpen, setIsRecommendDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -195,8 +197,14 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   }
 
   return (
+    <>
+    <RecommendDialog 
+        open={isRecommendDialogOpen}
+        onOpenChange={setIsRecommendDialogOpen}
+        movie={movieDetails}
+    />
     <div className="pt-6 border-t mt-6 space-y-6">
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-center">
             <div className="flex items-center space-x-2">
                 <Switch id="watched-toggle" checked={watched} onCheckedChange={handleWatchedChange} />
                 <Label htmlFor="watched-toggle" className="text-lg">
@@ -213,14 +221,24 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
             )}
         </div>
 
-        <Button
-            onClick={handleWatchlistToggle}
-            variant={inWatchlist ? "secondary" : "outline"}
-            disabled={watched}
-        >
-            <Bookmark className={`mr-2 h-4 w-4 ${inWatchlist ? "fill-primary" : ""}`} />
-            {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+            <Button
+                onClick={handleWatchlistToggle}
+                variant={inWatchlist ? "secondary" : "outline"}
+                disabled={watched}
+            >
+                <Bookmark className={`mr-2 h-4 w-4 ${inWatchlist ? "fill-primary" : ""}`} />
+                {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+            </Button>
+
+            <Button
+                variant="outline"
+                onClick={() => setIsRecommendDialogOpen(true)}
+            >
+                <Share2 className="mr-2 h-4 w-4" />
+                Recommend to Friend
+            </Button>
+        </div>
 
 
       {watched && (
@@ -234,5 +252,6 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
         </div>
       )}
     </div>
+    </>
   );
 }

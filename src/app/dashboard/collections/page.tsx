@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, Star, Loader2, ListFilter, EyeOff, Bookmark, Trash2, Sparkles, History } from 'lucide-react';
+import { Search, Star, Loader2, ListFilter, EyeOff, Bookmark, Trash2, Sparkles, History, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
@@ -41,6 +41,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface UserMovieData {
   watched?: boolean;
@@ -52,7 +53,7 @@ interface UserMovieData {
 
 type UserRatings = Record<string, UserMovieData>;
 
-interface Recommendation {
+interface AiRecommendation {
   id: string;
   preferences: string;
   recommendations: {
@@ -63,14 +64,28 @@ interface Recommendation {
   createdAt: Timestamp;
 }
 
+interface UserRecommendation {
+    id: string;
+    createdAt: Timestamp;
+    movie: MovieDetailsOutput;
+    recipients: {id: string, name: string}[];
+}
+
+interface User {
+  id: string;
+  displayName: string;
+  photoURL?: string;
+}
+
 export default function CollectionsPage() {
   const [user, authLoading] = useAuthState(auth);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [watchedMovies, setWatchedMovies] = useState<MovieDetailsOutput[]>([]);
   const [watchlistMovies, setWatchlistMovies] = useState<MovieDetailsOutput[]>([]);
-  const [recommendationHistory, setRecommendationHistory] = useState<Recommendation[]>([]);
-  
+  const [aiRecommendationHistory, setAiRecommendationHistory] = useState<AiRecommendation[]>([]);
+  const [userRecommendations, setUserRecommendations] = useState<UserRecommendation[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
 
@@ -123,15 +138,42 @@ export default function CollectionsPage() {
         setWatchedMovies(filterValidMovies(watchedMoviesData));
         setWatchlistMovies(filterValidMovies(watchlistMoviesData));
 
-        // Fetch recommendation history
-        const historyCollection = collection(db, 'users', user.uid, 'recommendations');
-        const q = query(historyCollection, orderBy('createdAt', 'desc'));
-        const historySnapshot = await getDocs(q);
-        const historyData = historySnapshot.docs.map(doc => ({
+        // Fetch AI recommendation history
+        const aiHistoryCollection = collection(db, 'users', user.uid, 'recommendations');
+        const aiHistoryQuery = query(aiHistoryCollection, orderBy('createdAt', 'desc'));
+        const aiHistorySnapshot = await getDocs(aiHistoryQuery);
+        const aiHistoryData = aiHistorySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-        } as Recommendation));
-        setRecommendationHistory(historyData);
+        } as AiRecommendation));
+        setAiRecommendationHistory(aiHistoryData);
+        
+        // Fetch user-sent recommendations
+        const userRecsCollection = collection(db, 'users', user.uid, 'sentRecommendations');
+        const userRecsQuery = query(userRecsCollection, orderBy('createdAt', 'desc'));
+        const userRecsSnapshot = await getDocs(userRecsQuery);
+
+        const friendDocs = await getDocs(collection(db, 'users', user.uid, 'friends'));
+        const friendsMap = new Map<string, string>(friendDocs.docs.map(d => [d.id, d.data().displayName]));
+
+
+        const userRecsData = await Promise.all(userRecsSnapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            const movie = await getMovieDetails({id: data.movieId, mediaType: data.mediaType });
+            const recipients = (data.recipientIds as string[]).map(id => ({
+                id,
+                name: friendsMap.get(id) || 'Unknown User'
+            }));
+
+            return {
+                id: doc.id,
+                createdAt: data.createdAt,
+                movie,
+                recipients
+            } as UserRecommendation;
+        }));
+        setUserRecommendations(userRecsData.filter(r => r.movie.id !== 0));
+
 
     } catch (error) {
       console.error('Failed to fetch user data:', error);
@@ -250,10 +292,11 @@ export default function CollectionsPage() {
 
      <Tabs defaultValue="collection" className="w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
                 <TabsTrigger value="collection">My Collection ({watchedMovies.length})</TabsTrigger>
                 <TabsTrigger value="watchlist">Watchlist ({watchlistMovies.length})</TabsTrigger>
-                <TabsTrigger value="recommendations">Recommendations ({recommendationHistory.length})</TabsTrigger>
+                <TabsTrigger value="ai-recommendations">AI Suggestions ({aiRecommendationHistory.length})</TabsTrigger>
+                <TabsTrigger value="my-recommendations">My Recs ({userRecommendations.length})</TabsTrigger>
             </TabsList>
             <div className="relative w-full sm:w-auto sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -456,18 +499,18 @@ export default function CollectionsPage() {
             )}
         </TabsContent>
 
-        {/* Recommendations Tab */}
-        <TabsContent value="recommendations" className="mt-6">
-            {!loading && recommendationHistory.length === 0 && (
+        {/* AI Recommendations Tab */}
+        <TabsContent value="ai-recommendations" className="mt-6">
+            {!loading && aiRecommendationHistory.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
                     <h3 className="text-xl font-bold tracking-tight">No history yet</h3>
                     <p className="text-sm text-muted-foreground mt-2">Your past AI recommendations will appear here.</p>
                      <Button asChild className="mt-4"><Link href="/dashboard/ai-recommender">Get a Recommendation</Link></Button>
                 </div>
             )}
-            {recommendationHistory.length > 0 && (
+            {aiRecommendationHistory.length > 0 && (
                 <div className="space-y-6">
-                    {recommendationHistory
+                    {aiRecommendationHistory
                         .filter(item => !searchTerm || item.preferences.toLowerCase().includes(searchTerm.toLowerCase()))
                         .map(item => (
                         <Card key={item.id}>
@@ -488,6 +531,55 @@ export default function CollectionsPage() {
                                 </div>
                             ))}
                             </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </TabsContent>
+
+         {/* My Recommendations Tab */}
+        <TabsContent value="my-recommendations" className="mt-6">
+            {!loading && userRecommendations.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
+                    <h3 className="text-xl font-bold tracking-tight">You haven't recommended anything</h3>
+                    <p className="text-sm text-muted-foreground mt-2">Movies you recommend to friends will appear here.</p>
+                     <Button asChild className="mt-4"><Link href="/dashboard/movies">Browse Media</Link></Button>
+                </div>
+            )}
+            {userRecommendations.length > 0 && (
+                <div className="space-y-4">
+                    {userRecommendations
+                        .filter(item => !searchTerm || item.movie.title.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(item => (
+                        <Card key={item.id} className="p-4">
+                            <div className="flex items-start gap-4">
+                                <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
+                                    <Image
+                                        src={item.movie.imageUrl}
+                                        alt={item.movie.title}
+                                        data-ai-hint={item.movie.imageHint}
+                                        width={80}
+                                        height={120}
+                                        className="rounded-sm object-cover aspect-[2/3]"
+                                    />
+                                </Link>
+                                <div className="flex-1">
+                                    <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                                        <h3 className="text-lg font-bold hover:underline">{item.movie.title} ({item.movie.year})</h3>
+                                    </Link>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                        {formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}
+                                    </p>
+                                    <div className="text-sm">
+                                        <p className="font-semibold">You recommended this to:</p>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                            {item.recipients.map(recipient => (
+                                                <Badge key={recipient.id} variant="secondary">{recipient.name}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </Card>
                     ))}
                 </div>
