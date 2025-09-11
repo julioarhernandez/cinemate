@@ -13,6 +13,7 @@ import {
   Eye,
   Star,
   Gift,
+  Bookmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,11 +25,12 @@ import {
 } from '@/components/ui/card';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp, doc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface FriendActivityItem {
@@ -58,6 +60,36 @@ export default function DashboardPage() {
   const [incomingRecommendations, setIncomingRecommendations] = useState<IncomingRecommendation[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(true);
+  const { toast } = useToast();
+
+  const handleSaveToWatchlistAndDismiss = async (recommendation: IncomingRecommendation) => {
+    if (!user) return;
+    try {
+      // 1. Add to watchlist
+      const ratingDocRef = doc(db, 'users', user.uid, 'ratings', recommendation.movie.id.toString());
+      await setDoc(ratingDocRef, { 
+        watchlist: true, 
+        mediaType: recommendation.movie.mediaType,
+        updatedAt: serverTimestamp() 
+      }, { merge: true });
+
+      // 2. Dismiss recommendation
+      const recDocRef = doc(db, 'users', user.uid, 'incomingRecommendations', recommendation.id);
+      await deleteDoc(recDocRef);
+
+      // 3. Update UI state
+      setIncomingRecommendations(prev => prev.filter(r => r.id !== recommendation.id));
+      
+      toast({ 
+        title: 'Saved to Watchlist!',
+        description: `"${recommendation.movie.title}" has been added to your watchlist.`,
+      });
+
+    } catch (error) {
+      console.error('Failed to save to watchlist and dismiss:', error);
+      toast({ variant: 'destructive', title: 'Action failed. Please try again.' });
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -397,30 +429,32 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   {incomingRecommendations.map((item) => (
                     <div key={item.id} className="flex items-start gap-4">
-                      <Avatar className="h-10 w-10 border">
-                         <AvatarImage src={item.from.photoURL} alt={item.from.name} />
-                         <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-bold text-foreground">{item.from.name}</span>
-                          {' '}recommended{' '}
-                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="block font-bold hover:underline">{item.movie.title}</Link>
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
-                        </div>
-                      </div>
-                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
                         <Image
                             src={item.movie.imageUrl}
                             alt={item.movie.title}
                             data-ai-hint={item.movie.imageHint}
-                            width={40}
-                            height={60}
+                            width={56}
+                            height={84}
                             className="rounded-sm object-cover aspect-[2/3]"
                           />
                       </Link>
+                      <div className="flex-1">
+                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
+                        <div className="text-xs text-muted-foreground mt-1 mb-2">
+                            <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
+                        </div>
+                        <div className="text-sm flex items-center gap-2 mb-2">
+                           <Avatar className="h-6 w-6">
+                              <AvatarImage src={item.from.photoURL} alt={item.from.name} />
+                              <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                           </Avatar>
+                           <p>From <span className="font-semibold">{item.from.name}</span></p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
+                            <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -452,5 +486,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

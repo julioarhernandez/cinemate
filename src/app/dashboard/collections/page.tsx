@@ -319,6 +319,36 @@ export default function CollectionsPage() {
     }
   }
 
+  const handleSaveToWatchlistAndDismiss = async (recommendation: IncomingRecommendation) => {
+    if (!user) return;
+    try {
+      // 1. Add to watchlist
+      const ratingDocRef = doc(db, 'users', user.uid, 'ratings', recommendation.movie.id.toString());
+      await setDoc(ratingDocRef, { 
+        watchlist: true, 
+        mediaType: recommendation.movie.mediaType,
+        updatedAt: serverTimestamp() 
+      }, { merge: true });
+
+      // 2. Dismiss recommendation
+      const recDocRef = doc(db, 'users', user.uid, 'incomingRecommendations', recommendation.id);
+      await deleteDoc(recDocRef);
+
+      // 3. Update UI state
+      setIncomingRecommendations(prev => prev.filter(r => r.id !== recommendation.id));
+      setWatchlistMovies(prev => [recommendation.movie, ...prev]);
+      
+      toast({ 
+        title: 'Saved to Watchlist!',
+        description: `"${recommendation.movie.title}" has been added to your watchlist.`,
+      });
+
+    } catch (error) {
+      console.error('Failed to save to watchlist and dismiss:', error);
+      toast({ variant: 'destructive', title: 'Action failed. Please try again.' });
+    }
+  };
+
 
   useEffect(() => {
     setCurrentPage(1);
@@ -679,9 +709,12 @@ export default function CollectionsPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
+                                        <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
+                                    </Button>
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button size="sm" variant="outline"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
+                                            <Button size="sm" variant="ghost"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader>
@@ -710,5 +743,3 @@ export default function CollectionsPage() {
     </div>
   );
 }
-
-    
