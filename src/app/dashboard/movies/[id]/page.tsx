@@ -4,8 +4,9 @@ import { notFound } from 'next/navigation';
 import { getMovieDetails } from '@/ai/flows/get-movie-details';
 import { Badge } from '@/components/ui/badge';
 import { MovieDetailsClient } from '@/components/movie-details-client';
-import { Star } from 'lucide-react';
+import { Star, Clock, Video, Globe } from 'lucide-react';
 import { BackButton } from '@/components/back-button';
+import { Separator } from '@/components/ui/separator';
 
 export default async function MovieDetailsPage({
   params,
@@ -62,6 +63,39 @@ export default async function MovieDetailsPage({
               {movieDetails.synopsis}
             </p>
           </div>
+          
+          <Separator className="my-6" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            {movieDetails.duration && (
+                <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                        <p className="text-muted-foreground">Duration</p>
+                        <p className="font-semibold">{movieDetails.duration}</p>
+                    </div>
+                </div>
+            )}
+             {movieDetails.director && (
+                <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                        <p className="text-muted-foreground">Director</p>
+                        <p className="font-semibold">{movieDetails.director}</p>
+                    </div>
+                </div>
+            )}
+             {movieDetails.country && (
+                <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                        <p className="text-muted-foreground">Country</p>
+                        <p className="font-semibold">{movieDetails.country}</p>
+                    </div>
+                </div>
+            )}
+          </div>
+
 
           <MovieDetailsClient movieDetails={movieDetails} movieId={movieId} />
 

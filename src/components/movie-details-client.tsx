@@ -14,6 +14,7 @@ import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { Skeleton } from './ui/skeleton';
 import { RecommendDialog } from './recommend-dialog';
 import { TrailerDialog } from './trailer-dialog';
+import { Separator } from './ui/separator';
 
 const StarRatingInput = ({
   rating,
@@ -183,7 +184,8 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
 
   if (authLoading || !isDataLoaded) {
-    return <div className="space-y-6 pt-4">
+    return <div className="space-y-6 pt-8">
+      <Separator />
       <div className="flex items-center space-x-4">
           <Skeleton className="h-6 w-12 rounded-full" />
           <Skeleton className="h-6 w-32 rounded-md" />
@@ -213,7 +215,8 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
             title={movieDetails.title}
         />
     )}
-    <div className="pt-6 border-t mt-6 space-y-6">
+    <div className="pt-6 space-y-6">
+        <Separator />
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-center">
             <div className="flex items-center space-x-2">
                 <Switch id="watched-toggle" checked={watched} onCheckedChange={handleWatchedChange} />

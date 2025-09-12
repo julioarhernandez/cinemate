@@ -44,6 +44,9 @@ const MovieDetailsOutputSchema = z.object({
     ),
   trailerUrl: z.string().optional().describe('The URL of the official trailer on YouTube.'),
   justWatchUrl: z.string().optional().describe('The URL to the JustWatch page for the media.'),
+  duration: z.string().optional().describe('The duration of the media (e.g., "1h 45m").'),
+  director: z.string().optional().describe('The director of the media.'),
+  country: z.string().optional().describe('The country of origin of the media.'),
 });
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
@@ -59,6 +62,9 @@ const UnknownMovie: MovieDetailsOutput = {
     imageHint: 'media poster',
     trailerUrl: undefined,
     justWatchUrl: undefined,
+    duration: undefined,
+    director: undefined,
+    country: undefined,
 }
 
 // Helper function to get fallback movie data
@@ -67,6 +73,28 @@ function getFallbackMovie(id: number, mediaType: 'movie' | 'tv'): MovieDetailsOu
   // Ensure the synopsis is always a string.
   return fallbackMovie ? { ...fallbackMovie, synopsis: fallbackMovie.synopsis ?? 'No synopsis available.' } : { ...UnknownMovie, id, mediaType };
 }
+
+// Helper function to format duration
+function formatDuration(runtime: number | number[]): string | undefined {
+    if (!runtime) return undefined;
+    
+    const totalMinutes = Array.isArray(runtime) ? runtime[0] : runtime;
+    if (typeof totalMinutes !== 'number' || totalMinutes <= 0) return undefined;
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    let durationString = '';
+    if (hours > 0) {
+        durationString += `${hours}h `;
+    }
+    if (minutes > 0) {
+        durationString += `${minutes}m`;
+    }
+    
+    return durationString.trim() || undefined;
+}
+
 
 // Main function to get movie details
 export async function getMovieDetails(
@@ -82,15 +110,17 @@ export async function getMovieDetails(
 
   try {
     const apiKey = process.env.TMDB_API_KEY;
-    // Fetch detailed information, videos, and watch providers in parallel
+    // Fetch detailed information, videos, watch providers, and credits in parallel
     const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${apiKey}`;
     const videosUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/videos?api_key=${apiKey}`;
     const providersUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/watch/providers?api_key=${apiKey}`;
+    const creditsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/credits?api_key=${apiKey}`;
     
-    const [detailsResponse, videosResponse, providersResponse] = await Promise.all([
+    const [detailsResponse, videosResponse, providersResponse, creditsResponse] = await Promise.all([
       fetch(detailsUrl),
       fetch(videosUrl),
       fetch(providersUrl),
+      fetch(creditsUrl),
     ]);
 
     // If the movie is not found on TMDB, fall back.
@@ -106,6 +136,7 @@ export async function getMovieDetails(
     const media = await detailsResponse.json();
     let trailerUrl: string | undefined = undefined;
     let justWatchUrl: string | undefined = undefined;
+    let director: string | undefined = undefined;
 
     if(videosResponse.ok) {
         const videos = await videosResponse.json();
@@ -127,11 +158,21 @@ export async function getMovieDetails(
             justWatchUrl = providers.results.US.link;
         }
     }
-
+    
+    if (creditsResponse.ok) {
+        const credits = await creditsResponse.json();
+        const directorData = credits.crew.find((person: any) => person.job === 'Director');
+        if (directorData) {
+            director = directorData.name;
+        }
+    }
 
     const isMovie = mediaType === 'movie';
     const title = isMovie ? media.title : media.name;
     const releaseDate = isMovie ? media.release_date : media.first_air_date;
+    const duration = isMovie ? formatDuration(media.runtime) : formatDuration(media.episode_run_time);
+    const country = media.production_countries && media.production_countries.length > 0 ? media.production_countries[0].name : undefined;
+
 
     // 3. Format and return the movie details
     return {
@@ -150,6 +191,9 @@ export async function getMovieDetails(
       imageHint: `${title} poster`,
       trailerUrl,
       justWatchUrl,
+      duration,
+      director,
+      country,
     };
 
   } catch (error) {
