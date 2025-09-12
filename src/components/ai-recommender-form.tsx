@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Bot, Loader2, Sparkles, Library } from 'lucide-react';
+import { Bot, Loader2, Sparkles, Library, Bookmark } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Link from 'next/link';
 
@@ -49,6 +49,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
   const [user] = useAuthState(auth);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogListType, setDialogListType] = useState<'watched' | 'watchlist'>('watched');
   const [result, setResult] = useState<RecommendMovieOutput | null>(null);
   const { toast } = useToast();
 
@@ -137,6 +138,11 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
       });
   };
 
+  const openDialog = (type: 'watched' | 'watchlist') => {
+    setDialogListType(type);
+    setIsDialogOpen(true);
+  };
+
 
   return (
     <>
@@ -144,8 +150,9 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSelectMovies={handleSelectMovies}
+        listType={dialogListType}
       />
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="space-y-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
@@ -168,7 +175,15 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
                 </FormItem>
               )}
             />
-            <div className="flex flex-col sm:flex-row-reverse gap-2">
+            <div className="flex flex-col gap-2">
+               <Button type="button" variant="secondary" onClick={() => openDialog('watched')} disabled={loading} className="w-full">
+                  <Library className="mr-2 h-4 w-4" />
+                  Select from Library
+              </Button>
+               <Button type="button" variant="secondary" onClick={() => openDialog('watchlist')} disabled={loading} className="w-full">
+                  <Bookmark className="mr-2 h-4 w-4" />
+                  Select from Watchlist
+              </Button>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? (
                   <>
@@ -182,15 +197,11 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
                   </>
                 )}
               </Button>
-               <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(true)} disabled={loading} className="w-full">
-                  <Library className="mr-2 h-4 w-4" />
-                  Select from Library
-              </Button>
             </div>
 
           </form>
         </Form>
-        <div className="flex items-start justify-center">
+        <div className="flex items-start justify-center pt-8">
           {loading && (
             <div className="flex flex-col items-center gap-4 text-muted-foreground pt-12">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />

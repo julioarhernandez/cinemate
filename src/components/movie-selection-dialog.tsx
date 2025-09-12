@@ -28,6 +28,7 @@ interface MovieSelectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectMovies: (movies: { id: number; title: string }[]) => void;
+  listType: 'watched' | 'watchlist';
 }
 
 interface UserMovieData {
@@ -38,6 +39,7 @@ export function MovieSelectionDialog({
   open,
   onOpenChange,
   onSelectMovies,
+  listType,
 }: MovieSelectionDialogProps) {
   const [user, authLoading] = useAuthState(auth);
   const [allMovies, setAllMovies] = useState<MovieDetailsOutput[]>([]);
@@ -53,7 +55,7 @@ export function MovieSelectionDialog({
     setLoading(true);
     try {
       const ratingsCollection = collection(db, 'users', user.uid, 'ratings');
-      const q = query(ratingsCollection, where('watched', '==', true));
+      const q = query(ratingsCollection, where(listType, '==', true));
       const snapshot = await getDocs(q);
 
       const mediaItems: { id: number; mediaType: 'movie' | 'tv' }[] = [];
@@ -78,12 +80,12 @@ export function MovieSelectionDialog({
       toast({
         variant: 'destructive',
         title: 'Fetch Failed',
-        description: 'Could not fetch your movie collection.',
+        description: `Could not fetch your ${listType}.`,
       });
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, listType]);
 
   useEffect(() => {
     if (open && user) {
@@ -129,21 +131,24 @@ export function MovieSelectionDialog({
     setSelectedMovies({});
     setSearchTerm('');
   };
+  
+  const dialogTitle = listType === 'watched' ? 'Select Movies from Your Library' : 'Select Movies from Your Watchlist';
+  const dialogDescription = `Choose movies from your ${listType} to base your AI recommendation on.`
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Select Movies from Your Library</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            Choose movies to base your AI recommendation on.
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
 
         <div className="relative my-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search your library..."
+            placeholder={`Search your ${listType}...`}
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -154,6 +159,8 @@ export function MovieSelectionDialog({
             <div className="flex justify-center items-center h-96">
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
+        ) : allMovies.length === 0 ? (
+           <div className="text-center py-12 text-muted-foreground">Your {listType} is empty.</div>
         ) : (
           <ScrollArea className="h-96">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 pr-4">
