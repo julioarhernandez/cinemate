@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { EyeOff, Star, Bookmark, Share2, PlayCircle } from 'lucide-react';
+import { EyeOff, Star, Bookmark, Share2, PlayCircle, MonitorPlay } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -240,6 +240,14 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
                 <PlayCircle className="mr-2 h-4 w-4" />
                 Watch Trailer
             </Button>
+            {movieDetails.justWatchUrl && (
+                <Button variant="outline" asChild>
+                    <a href={movieDetails.justWatchUrl} target="_blank" rel="noopener noreferrer">
+                        <MonitorPlay className="mr-2 h-4 w-4" />
+                        Where to Watch
+                    </a>
+                </Button>
+            )}
             <Button
                 onClick={handleWatchlistToggle}
                 variant={inWatchlist ? "secondary" : "outline"}

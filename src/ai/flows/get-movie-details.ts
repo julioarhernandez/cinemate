@@ -43,6 +43,7 @@ const MovieDetailsOutputSchema = z.object({
       "A short, two-word hint for the media poster image, like 'sci-fi poster'."
     ),
   trailerUrl: z.string().optional().describe('The URL of the official trailer on YouTube.'),
+  justWatchUrl: z.string().optional().describe('The URL to the JustWatch page for the media.'),
 });
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
@@ -57,6 +58,7 @@ const UnknownMovie: MovieDetailsOutput = {
     imageUrl: 'https://picsum.photos/400/600',
     imageHint: 'media poster',
     trailerUrl: undefined,
+    justWatchUrl: undefined,
 }
 
 // Helper function to get fallback movie data
@@ -80,13 +82,15 @@ export async function getMovieDetails(
 
   try {
     const apiKey = process.env.TMDB_API_KEY;
-    // Fetch detailed information and videos in parallel
+    // Fetch detailed information, videos, and watch providers in parallel
     const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${apiKey}`;
     const videosUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/videos?api_key=${apiKey}`;
+    const providersUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/watch/providers?api_key=${apiKey}`;
     
-    const [detailsResponse, videosResponse] = await Promise.all([
+    const [detailsResponse, videosResponse, providersResponse] = await Promise.all([
       fetch(detailsUrl),
-      fetch(videosUrl)
+      fetch(videosUrl),
+      fetch(providersUrl),
     ]);
 
     // If the movie is not found on TMDB, fall back.
@@ -101,6 +105,7 @@ export async function getMovieDetails(
     
     const media = await detailsResponse.json();
     let trailerUrl: string | undefined = undefined;
+    let justWatchUrl: string | undefined = undefined;
 
     if(videosResponse.ok) {
         const videos = await videosResponse.json();
@@ -112,6 +117,14 @@ export async function getMovieDetails(
 
         if (trailer) {
             trailerUrl = `https://www.youtube.com/embed/${trailer.key}`;
+        }
+    }
+    
+    if (providersResponse.ok) {
+        const providers = await providersResponse.json();
+        // Default to US region link if available
+        if (providers.results?.US?.link) {
+            justWatchUrl = providers.results.US.link;
         }
     }
 
@@ -136,6 +149,7 @@ export async function getMovieDetails(
         : 'https://picsum.photos/400/600',
       imageHint: `${title} poster`,
       trailerUrl,
+      justWatchUrl,
     };
 
   } catch (error) {
