@@ -87,8 +87,8 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
       const watchedMovieDetails = await Promise.all(watchedMovieIds.map(m => getMovieDetails({ id: m.id, mediaType: m.mediaType })));
       const watchlistMovieDetails = await Promise.all(watchlistMovieIds.map(m => getMovieDetails({ id: m.id, mediaType: m.mediaType })));
 
-      const watchedMovieTitles = watchedMovieDetails.map(m => m.title).filter(Boolean);
-      const watchlistMovieTitles = watchlistMovieDetails.map(m => m.title).filter(Boolean);
+      const watchedMovieTitles = watchedMovieDetails.map(m => m && m.title && m.year ? `${m.title} (${m.year})` : null).filter(Boolean) as string[];
+      const watchlistMovieTitles = watchlistMovieDetails.map(m => m && m.title && m.year ? `${m.title} (${m.year})` : null).filter(Boolean) as string[];
 
 
       const recommendation = await recommendMovie({
