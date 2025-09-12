@@ -42,6 +42,7 @@ const MovieDetailsOutputSchema = z.object({
     .describe(
       "A short, two-word hint for the media poster image, like 'sci-fi poster'."
     ),
+  trailerUrl: z.string().optional().describe('The URL of the official trailer on YouTube.'),
 });
 export type MovieDetailsOutput = z.infer<typeof MovieDetailsOutputSchema>;
 
@@ -55,6 +56,7 @@ const UnknownMovie: MovieDetailsOutput = {
     rating: 0,
     imageUrl: 'https://picsum.photos/400/600',
     imageHint: 'media poster',
+    trailerUrl: undefined,
 }
 
 // Helper function to get fallback movie data
@@ -77,10 +79,15 @@ export async function getMovieDetails(
   }
 
   try {
-    // Fetch detailed information using the movie ID
-    const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${process.env.TMDB_API_KEY}`;
+    const apiKey = process.env.TMDB_API_KEY;
+    // Fetch detailed information and videos in parallel
+    const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${apiKey}`;
+    const videosUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/videos?api_key=${apiKey}`;
     
-    const detailsResponse = await fetch(detailsUrl);
+    const [detailsResponse, videosResponse] = await Promise.all([
+      fetch(detailsUrl),
+      fetch(videosUrl)
+    ]);
 
     // If the movie is not found on TMDB, fall back.
     if (detailsResponse.status === 404) {
@@ -93,6 +100,21 @@ export async function getMovieDetails(
     }
     
     const media = await detailsResponse.json();
+    let trailerUrl: string | undefined = undefined;
+
+    if(videosResponse.ok) {
+        const videos = await videosResponse.json();
+        const trailer = videos.results.find(
+            (video: any) => video.site === 'YouTube' && video.type === 'Trailer' && video.official
+        ) || videos.results.find(
+            (video: any) => video.site === 'YouTube' && video.type === 'Trailer'
+        );
+
+        if (trailer) {
+            trailerUrl = `https://www.youtube.com/embed/${trailer.key}`;
+        }
+    }
+
 
     const isMovie = mediaType === 'movie';
     const title = isMovie ? media.title : media.name;
@@ -113,6 +135,7 @@ export async function getMovieDetails(
         ? `https://image.tmdb.org/t/p/w400${media.poster_path}` 
         : 'https://picsum.photos/400/600',
       imageHint: `${title} poster`,
+      trailerUrl,
     };
 
   } catch (error) {

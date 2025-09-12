@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { EyeOff, Star, Bookmark, Share2 } from 'lucide-react';
+import { EyeOff, Star, Bookmark, Share2, PlayCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { Skeleton } from './ui/skeleton';
 import { RecommendDialog } from './recommend-dialog';
+import { TrailerDialog } from './trailer-dialog';
 
 const StarRatingInput = ({
   rating,
@@ -57,6 +58,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   const [inWatchlist, setInWatchlist] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isRecommendDialogOpen, setIsRecommendDialogOpen] = useState(false);
+  const [isTrailerDialogOpen, setIsTrailerDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -203,6 +205,14 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
         onOpenChange={setIsRecommendDialogOpen}
         movie={movieDetails}
     />
+    {movieDetails.trailerUrl && (
+        <TrailerDialog
+            open={isTrailerDialogOpen}
+            onOpenChange={setIsTrailerDialogOpen}
+            trailerUrl={movieDetails.trailerUrl}
+            title={movieDetails.title}
+        />
+    )}
     <div className="pt-6 border-t mt-6 space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start sm:items-center">
             <div className="flex items-center space-x-2">
@@ -222,6 +232,14 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
         </div>
 
         <div className="flex flex-wrap gap-2">
+            <Button
+                variant="outline"
+                onClick={() => setIsTrailerDialogOpen(true)}
+                disabled={!movieDetails.trailerUrl}
+            >
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Watch Trailer
+            </Button>
             <Button
                 onClick={handleWatchlistToggle}
                 variant={inWatchlist ? "secondary" : "outline"}
