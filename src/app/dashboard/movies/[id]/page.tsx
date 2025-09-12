@@ -48,24 +48,24 @@ export default async function MovieDetailsPage({
             {movieDetails.title}
           </h1>
           
-          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-muted-foreground">
-            <p className="text-lg">{movieDetails.year}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-lg text-muted-foreground">
+            <p>{movieDetails.year}</p>
             {movieDetails.duration && (
                 <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    <span className="font-semibold">{movieDetails.duration}</span>
+                    <span>{movieDetails.duration}</span>
                 </div>
             )}
              {movieDetails.director && (
                 <div className="flex items-center gap-2">
                     <Video className="h-4 w-4" />
-                    <span className="font-semibold">{movieDetails.director}</span>
+                    <span>{movieDetails.director}</span>
                 </div>
             )}
              {movieDetails.country && (
                 <div className="flex items-center gap-2">
                     <Globe className="h-4 w-4" />
-                    <span className="font-semibold">{movieDetails.country}</span>
+                    <span>{movieDetails.country}</span>
                 </div>
             )}
           </div>
