@@ -164,7 +164,7 @@ export function RecommendDialog({
         <DialogHeader>
           <DialogTitle>Recommend Movie</DialogTitle>
           <DialogDescription>
-            Share this movie with your friends on MovieCircle.
+            Share this movie with your friends on MovieCircles.
           </DialogDescription>
         </DialogHeader>
 

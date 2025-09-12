@@ -58,7 +58,7 @@ export default function RegisterPage() {
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-2xl">Create an Account</CardTitle>
           <CardDescription>
-            Join MovieCircle and start your movie journey
+            Join MovieCircles and start your movie journey
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

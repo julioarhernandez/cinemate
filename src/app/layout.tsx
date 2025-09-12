@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'MovieCircle',
+  title: 'MovieCircles',
   description:
     'Discover, rate, and share movies with friends. Get AI-powered recommendations.',
 };
