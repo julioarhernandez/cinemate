@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { auth, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, googleProvider, signInWithPopup, db, doc, setDoc, serverTimestamp, getAdditionalUserInfo } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { FirebaseError } from 'firebase/app';
 import { Logo } from '@/components/logo';
@@ -25,12 +25,25 @@ export default function RegisterPage() {
 
   const handleGoogleSignUp = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      const additionalUserInfo = getAdditionalUserInfo(result);
+
+      if (additionalUserInfo?.isNewUser) {
+        const userDocRef = doc(db, 'users', user.uid);
+        await setDoc(userDocRef, {
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          createdAt: serverTimestamp(),
+        });
+      }
+
       router.push('/dashboard');
     } catch (error) {
       const firebaseError = error as FirebaseError;
       // Don't show an error toast if the user closes the popup
-      if (firebaseError.code === 'auth/cancelled-popup-request') {
+      if (firebaseError.code === 'auth/cancelled-popup-request' || firebaseError.code === 'auth/popup-closed-by-user') {
         return;
       }
       console.error("Google Sign-Up Error:", error);
