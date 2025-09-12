@@ -5,13 +5,24 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AiRecommenderForm } from '@/components/ai-recommender-form';
 import { Button } from '@/components/ui/button';
-import { Library, History, Loader2 } from 'lucide-react';
+import { Library, History, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { collection, query, orderBy, limit, getDocs, Timestamp, doc, deleteDoc } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface AiRecommendation {
   id: string;
@@ -68,6 +79,20 @@ export default function AiRecommenderPage() {
     // Increment key to trigger a re-fetch of the history
     setKey(prevKey => prevKey + 1);
   };
+  
+  const handleDeleteRecommendation = async (recommendationId: string) => {
+    if (!user) return;
+    try {
+      const recDocRef = doc(db, 'users', user.uid, 'recommendations', recommendationId);
+      await deleteDoc(recDocRef);
+      setRecommendationHistory(prev => prev.filter(r => r.id !== recommendationId));
+      toast({ title: 'Recommendation deleted.' });
+    } catch (error) {
+      console.error('Failed to delete recommendation:', error);
+      toast({ variant: 'destructive', title: 'Could not delete recommendation.' });
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -126,6 +151,32 @@ export default function AiRecommenderPage() {
                             </div>
                         ))}
                         </CardContent>
+                        <CardFooter className="flex justify-end">
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="sm">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete this AI recommendation from your history.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => handleDeleteRecommendation(item.id)}
+                                        className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </CardFooter>
                     </Card>
                 ))}
             </div>

@@ -352,6 +352,19 @@ export default function CollectionsPage() {
     }
   };
 
+  const handleDeleteAiRecommendation = async (recommendationId: string) => {
+    if (!user) return;
+    try {
+      const recDocRef = doc(db, 'users', user.uid, 'recommendations', recommendationId);
+      await deleteDoc(recDocRef);
+      setAiRecommendationHistory(prev => prev.filter(r => r.id !== recommendationId));
+      toast({ title: 'Recommendation deleted.' });
+    } catch (error) {
+      console.error('Failed to delete AI recommendation:', error);
+      toast({ variant: 'destructive', title: 'Could not delete recommendation.' });
+    }
+  };
+
 
   useEffect(() => {
     setCurrentPage(1);
@@ -615,6 +628,32 @@ export default function CollectionsPage() {
                                 </div>
                             ))}
                             </CardContent>
+                            <CardFooter className="flex justify-end">
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="sm">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete this AI recommendation from your history.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => handleDeleteAiRecommendation(item.id)}
+                                            className="bg-destructive hover:bg-destructive/90"
+                                        >
+                                            Delete
+                                        </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </CardFooter>
                         </Card>
                     ))}
                 </div>
