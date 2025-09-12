@@ -168,7 +168,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
                 </FormItem>
               )}
             />
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row-reverse gap-2">
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? (
                   <>

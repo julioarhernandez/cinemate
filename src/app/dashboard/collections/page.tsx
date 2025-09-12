@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useSearchParams } from 'next/navigation';
 
 interface UserMovieData {
   watched?: boolean;
@@ -90,6 +91,7 @@ interface User {
 
 export default function CollectionsPage() {
   const [user, authLoading] = useAuthState(auth);
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   
   const [watchedMovies, setWatchedMovies] = useState<MovieDetailsOutput[]>([]);
@@ -100,6 +102,7 @@ export default function CollectionsPage() {
 
   const [loading, setLoading] = useState(true);
   const [userRatings, setUserRatings] = useState<UserRatings>({});
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'collection');
 
   // Filter states
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -370,7 +373,7 @@ export default function CollectionsPage() {
         </p>
       </div>
 
-     <Tabs defaultValue="collection" className="w-full">
+     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
                 <TabsTrigger value="collection">My Collection ({watchedMovies.length})</TabsTrigger>

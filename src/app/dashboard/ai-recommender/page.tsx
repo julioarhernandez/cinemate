@@ -1,20 +1,72 @@
 
 "use client";
 
-import { AiRecommenderForm } from '@/components/ai-recommender-form';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { AiRecommenderForm } from '@/components/ai-recommender-form';
 import { Button } from '@/components/ui/button';
-import { Library } from 'lucide-react';
+import { Library, History, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { formatDistanceToNow } from 'date-fns';
+
+interface AiRecommendation {
+  id: string;
+  preferences: string;
+  recommendations: {
+    title: string;
+    year: string;
+    reasoning: string;
+  }[];
+  createdAt: Timestamp;
+}
 
 export default function AiRecommenderPage() {
   const { toast } = useToast();
+  const [user, authLoading] = useAuthState(auth);
+  const [recommendationHistory, setRecommendationHistory] = useState<AiRecommendation[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [key, setKey] = useState(0); // Used to force a re-fetch of history
+
+  const fetchHistory = async () => {
+    if (!user) {
+        setLoadingHistory(false);
+        return;
+    };
+    setLoadingHistory(true);
+    try {
+        const historyCollection = collection(db, 'users', user.uid, 'recommendations');
+        const historyQuery = query(historyCollection, orderBy('createdAt', 'desc'), limit(5));
+        const historySnapshot = await getDocs(historyQuery);
+        const historyData = historySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        } as AiRecommendation));
+        setRecommendationHistory(historyData);
+    } catch (error) {
+        console.error("Failed to fetch recommendation history:", error);
+        toast({ variant: 'destructive', title: 'Could not load history.' });
+    } finally {
+        setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!authLoading) {
+      fetchHistory();
+    }
+  }, [user, authLoading, key]);
 
   const handleNewRecommendation = () => {
     toast({
         title: "Recommendation Saved!",
         description: "Your new recommendation has been saved to your library.",
     });
+    // Increment key to trigger a re-fetch of the history
+    setKey(prevKey => prevKey + 1);
   };
 
   return (
@@ -29,14 +81,57 @@ export default function AiRecommenderPage() {
             </p>
         </div>
         <Button asChild>
-            <Link href="/dashboard/collections">
+            <Link href="/dashboard/collections?tab=ai-recommendations">
                 <Library className="mr-2 h-4 w-4" />
-                View My Library
+                View Full Library
             </Link>
         </Button>
       </div>
 
       <AiRecommenderForm onNewRecommendation={handleNewRecommendation} />
+      
+      <div className="space-y-4 pt-8">
+        <div className="flex items-center gap-2">
+            <History className="h-6 w-6 text-muted-foreground" />
+            <h2 className="font-headline text-2xl font-bold tracking-tight">Recent Suggestions</h2>
+        </div>
+
+        {loadingHistory ? (
+            <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        ) : recommendationHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
+                <h3 className="text-xl font-bold tracking-tight">No history yet</h3>
+                <p className="text-sm text-muted-foreground mt-2">Your past AI recommendations will appear here.</p>
+            </div>
+        ) : (
+            <div className="grid gap-6">
+                {recommendationHistory.map(item => (
+                    <Card key={item.id}>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Based on: &quot;{item.preferences}&quot;</CardTitle>
+                            <CardDescription>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                        {item.recommendations.map((rec, index) => (
+                            <div key={index} className="space-y-2 border-t pt-4 first:border-t-0 first:pt-0">
+                                <Link href={`/dashboard/movies?search=${encodeURIComponent(rec.title)}&year=${rec.year}`}>
+                                    <h3 className="text-xl font-bold text-primary hover:underline">{rec.title} ({rec.year})</h3>
+                                </Link>
+                                <div>
+                                    <h4 className="font-headline text-sm font-semibold">Why you might like it:</h4>
+                                    <p className="mt-1 text-sm text-muted-foreground">{rec.reasoning}</p>
+                                </div>
+                            </div>
+                        ))}
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        )}
+      </div>
+
     </div>
   );
 }
