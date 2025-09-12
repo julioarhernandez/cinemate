@@ -48,7 +48,7 @@ export default async function MovieDetailsPage({
             {movieDetails.title}
           </h1>
           
-          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-base text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-base font-bold text-muted-foreground">
             <p>{movieDetails.year}</p>
             {movieDetails.duration && (
                 <div className="flex items-center gap-2">
