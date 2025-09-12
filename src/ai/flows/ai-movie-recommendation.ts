@@ -18,6 +18,8 @@ const RecommendMovieInputSchema = z.object({
   userPreferences: z
     .string()
     .describe('A list of movies or genres that the user likes.'),
+  watchedMovies: z.array(z.string()).optional().describe('A list of movie titles the user has already watched.'),
+  watchlistMovies: z.array(z.string()).optional().describe('A list of movie titles the user has in their watchlist.'),
 });
 export type RecommendMovieInput = z.infer<typeof RecommendMovieInputSchema>;
 
@@ -48,11 +50,26 @@ const recommendMoviePrompt = ai.definePrompt({
 
 User's Liked Movies & Genres: {{{userPreferences}}}
 
-Based on this information, recommend a list of at least 3 specific movies that the user is likely to enjoy. 
-- Do not recommend movies that are already on their list.
+Based on this information, recommend a list of at least 3 specific movies that the user is likely to enjoy.
+- Do not recommend movies that are already on their list of liked preferences.
 - Provide a unique set of recommendations if asked multiple times with the same input.
 - Explain why you are recommending each movie.
-- It is critical that you find the correct release year for each movie.`,
+- It is critical that you find the correct release year for each movie.
+
+{{#if watchedMovies}}
+CRITICAL: Do NOT recommend any of the following movies, as the user has already watched them:
+{{#each watchedMovies}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+
+{{#if watchlistMovies}}
+CRITICAL: Do NOT recommend any of the following movies, as they are already on the user's watchlist:
+{{#each watchlistMovies}}
+- {{{this}}}
+{{/each}}
+{{/if}}
+`,
 });
 
 // Define the flow

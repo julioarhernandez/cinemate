@@ -13,6 +13,7 @@ import {
   recommendMovie,
   type RecommendMovieOutput,
 } from '@/ai/flows/ai-movie-recommendation';
+import { getMovieDetails } from '@/ai/flows/get-movie-details';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -28,7 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { MovieSelectionDialog } from './movie-selection-dialog';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 
 const formSchema = z.object({
@@ -70,7 +71,32 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
     setLoading(true);
     setResult(null);
     try {
-      const recommendation = await recommendMovie(values);
+      // Fetch watched and watchlist movies to exclude them from recommendations
+      const ratingsCollection = collection(db, 'users', user.uid, 'ratings');
+      const watchedQuery = query(ratingsCollection, where('watched', '==', true));
+      const watchlistQuery = query(ratingsCollection, where('watchlist', '==', true));
+
+      const [watchedSnapshot, watchlistSnapshot] = await Promise.all([
+        getDocs(watchedQuery),
+        getDocs(watchlistQuery),
+      ]);
+
+      const watchedMovieIds = watchedSnapshot.docs.map(doc => ({ id: parseInt(doc.id), mediaType: doc.data().mediaType || 'movie' }));
+      const watchlistMovieIds = watchlistSnapshot.docs.map(doc => ({ id: parseInt(doc.id), mediaType: doc.data().mediaType || 'movie' }));
+
+      const watchedMovieDetails = await Promise.all(watchedMovieIds.map(m => getMovieDetails({ id: m.id, mediaType: m.mediaType })));
+      const watchlistMovieDetails = await Promise.all(watchlistMovieIds.map(m => getMovieDetails({ id: m.id, mediaType: m.mediaType })));
+
+      const watchedMovieTitles = watchedMovieDetails.map(m => m.title).filter(Boolean);
+      const watchlistMovieTitles = watchlistMovieDetails.map(m => m.title).filter(Boolean);
+
+
+      const recommendation = await recommendMovie({
+        ...values,
+        watchedMovies: watchedMovieTitles,
+        watchlistMovies: watchlistMovieTitles,
+      });
+
       setResult(recommendation);
 
       // Save the recommendation to Firestore
