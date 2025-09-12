@@ -47,7 +47,28 @@ export default async function MovieDetailsPage({
           <h1 className="font-headline mt-2 text-4xl font-bold tracking-tight">
             {movieDetails.title}
           </h1>
-          <p className="mt-1 text-lg text-muted-foreground">{movieDetails.year}</p>
+          
+          <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-muted-foreground">
+            <p className="text-lg">{movieDetails.year}</p>
+            {movieDetails.duration && (
+                <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-semibold">{movieDetails.duration}</span>
+                </div>
+            )}
+             {movieDetails.director && (
+                <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4" />
+                    <span className="font-semibold">{movieDetails.director}</span>
+                </div>
+            )}
+             {movieDetails.country && (
+                <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    <span className="font-semibold">{movieDetails.country}</span>
+                </div>
+            )}
+          </div>
 
           <div className="mt-4 flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -63,30 +84,6 @@ export default async function MovieDetailsPage({
               {movieDetails.synopsis}
             </p>
           </div>
-          
-          <Separator className="my-6" />
-
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-sm">
-            {movieDetails.duration && (
-                <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">{movieDetails.duration}</span>
-                </div>
-            )}
-             {movieDetails.director && (
-                <div className="flex items-center gap-2">
-                    <Video className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">{movieDetails.director}</span>
-                </div>
-            )}
-             {movieDetails.country && (
-                <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold">{movieDetails.country}</span>
-                </div>
-            )}
-          </div>
-
 
           <MovieDetailsClient movieDetails={movieDetails} movieId={movieId} />
 
