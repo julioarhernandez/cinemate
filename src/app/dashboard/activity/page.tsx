@@ -125,7 +125,7 @@ export default function ActivityPage() {
       await Promise.all(ratingQueries);
 
       // 3. Sort all activities by date and take the most recent ones.
-      allRatings.sort((a, b) => b.watchedAt.toMillis() - b.watchedAt.toMillis());
+      allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
       const latestRatings = allRatings.slice(0, 20);
 
       // 4. Fetch movie details for the latest ratings.
@@ -257,7 +257,7 @@ export default function ActivityPage() {
                 </div>
                  <div className="space-y-2">
                     <Label>Rating: {getRatingInfo(ratingRange[0])?.emoji} to {getRatingInfo(ratingRange[1])?.emoji}</Label>
-                    <Slider value={ratingRange} onValueChange={setRatingRange} min={1} max={5} step={1} />
+                    <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} min={1} max={5} step={1} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="time-range-filter">Time Range</Label>
@@ -349,3 +349,5 @@ export default function ActivityPage() {
     </TooltipProvider>
   );
 }
+
+    

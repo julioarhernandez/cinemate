@@ -298,3 +298,5 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     </>
   );
 }
+
+    
