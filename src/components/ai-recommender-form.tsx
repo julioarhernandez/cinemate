@@ -29,7 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { MovieSelectionDialog } from './movie-selection-dialog';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 
 
 const formSchema = z.object({
@@ -51,6 +52,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogListType, setDialogListType] = useState<'watched' | 'watchlist'>('watched');
   const [result, setResult] = useState<RecommendMovieOutput | null>(null);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -69,9 +71,26 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
         });
         return;
     }
+
     setLoading(true);
     setResult(null);
+
     try {
+      // Check user tier and usage
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.data();
+      const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+      if (userData?.tier === 'standard') {
+        const monthlyUsage = userData.recommendationUsage?.[currentMonth] || 0;
+        if (monthlyUsage >= 2) {
+          setShowLimitAlert(true);
+          setLoading(false);
+          return;
+        }
+      }
+
       // Fetch watched and watchlist movies to exclude them from recommendations
       const ratingsCollection = collection(db, 'users', user.uid, 'ratings');
       const watchedQuery = query(ratingsCollection, where('watched', '==', true));
@@ -106,6 +125,11 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
         preferences: values.userPreferences,
         recommendations: recommendation.recommendations,
         createdAt: serverTimestamp(),
+      });
+      
+      // Update usage count
+      await updateDoc(userDocRef, {
+        [`recommendationUsage.${currentMonth}`]: increment(1)
       });
       
       onNewRecommendation();
@@ -146,6 +170,21 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
 
   return (
     <>
+      <AlertDialog open={showLimitAlert} onOpenChange={setShowLimitAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Monthly Limit Reached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have used your 2 free AI recommendations for the month. Please upgrade your plan to get unlimited recommendations.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction>Upgrade Now</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <MovieSelectionDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}

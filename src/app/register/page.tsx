@@ -31,11 +31,16 @@ export default function RegisterPage() {
 
       if (additionalUserInfo?.isNewUser) {
         const userDocRef = doc(db, 'users', user.uid);
+        const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
         await setDoc(userDocRef, {
           displayName: user.displayName,
           email: user.email,
           photoURL: user.photoURL,
           createdAt: serverTimestamp(),
+          tier: 'standard',
+          recommendationUsage: {
+            [currentMonth]: 0,
+          },
         });
       }
 

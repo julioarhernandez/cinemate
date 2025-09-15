@@ -34,11 +34,18 @@ export default function LoginPage() {
       if (additionalUserInfo?.isNewUser) {
         console.log('[Login Step 4] New user detected. Preparing to create database entry.');
         const userDocRef = doc(db, 'users', user.uid);
+        
+        const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
         const userData = {
           displayName: user.displayName,
           email: user.email,
           photoURL: user.photoURL,
           createdAt: serverTimestamp(),
+          tier: 'standard',
+          recommendationUsage: {
+            [currentMonth]: 0,
+          },
         };
         console.log('[Login Step 5] User data to be saved:', userData);
         await setDoc(userDocRef, userData);
