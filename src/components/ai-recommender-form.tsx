@@ -80,10 +80,13 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
       const userDocRef = doc(db, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
       const userData = userDoc.data();
-      const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0'); // padStart for '09'
+      const currentMonthKey = `${year}-${month}`;
 
       if (userData?.tier === 'standard') {
-        const monthlyUsage = userData.recommendationUsage?.[currentMonth] || 0;
+        const monthlyUsage = userData.recommendationUsage?.[currentMonthKey] || 0;
         if (monthlyUsage >= 2) {
           setShowLimitAlert(true);
           setLoading(false);
@@ -129,7 +132,7 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
       
       // Update usage count
       await updateDoc(userDocRef, {
-        [`recommendationUsage.${currentMonth}`]: increment(1)
+        [`recommendationUsage.${currentMonthKey}`]: increment(1)
       });
       
       onNewRecommendation();

@@ -35,7 +35,10 @@ export default function LoginPage() {
         console.log('[Login Step 4] New user detected. Preparing to create database entry.');
         const userDocRef = doc(db, 'users', user.uid);
         
-        const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // padStart for '09'
+        const currentMonthKey = `${year}-${month}`;
 
         const userData = {
           displayName: user.displayName,
@@ -44,7 +47,7 @@ export default function LoginPage() {
           createdAt: serverTimestamp(),
           tier: 'standard',
           recommendationUsage: {
-            [currentMonth]: 0,
+            [currentMonthKey]: 0,
           },
         };
         console.log('[Login Step 5] User data to be saved:', userData);

@@ -31,7 +31,10 @@ export default function RegisterPage() {
 
       if (additionalUserInfo?.isNewUser) {
         const userDocRef = doc(db, 'users', user.uid);
-        const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // padStart for '09'
+        const currentMonthKey = `${year}-${month}`;
         await setDoc(userDocRef, {
           displayName: user.displayName,
           email: user.email,
@@ -39,7 +42,7 @@ export default function RegisterPage() {
           createdAt: serverTimestamp(),
           tier: 'standard',
           recommendationUsage: {
-            [currentMonth]: 0,
+            [currentMonthKey]: 0,
           },
         });
       }
