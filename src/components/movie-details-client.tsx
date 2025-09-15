@@ -15,41 +15,46 @@ import { Skeleton } from './ui/skeleton';
 import { RecommendDialog } from './recommend-dialog';
 import { TrailerDialog } from './trailer-dialog';
 import { Separator } from './ui/separator';
+import { RATING_SCALE, getRatingInfo } from '@/lib/ratings';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
-const StarRatingInput = ({
+const EmojiRatingInput = ({
   rating,
   setRating,
 }: {
   rating: number;
   setRating: (rating: number) => void;
 }) => {
-  const [hover, setHover] = useState(0);
-
   return (
-    <div className="flex items-center gap-1">
-      {[...Array(10)].map((_, index) => {
-        const ratingValue = index + 1;
-        return (
-          <button
-            key={index}
-            type="button"
-            onMouseEnter={() => setHover(ratingValue)}
-            onMouseLeave={() => setHover(0)}
-            onClick={() => setRating(ratingValue)}
-          >
-            <Star
-              className={`h-6 w-6 cursor-pointer transition-colors ${
-                ratingValue <= (hover || rating)
-                  ? 'text-amber-400 fill-amber-400'
-                  : 'text-gray-300'
-              }`}
-            />
-          </button>
-        );
-      })}
-    </div>
+    <TooltipProvider>
+      <div className="flex items-center gap-2">
+        {RATING_SCALE.map((item) => (
+          <Tooltip key={item.value}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setRating(item.value)}
+                className={cn(
+                  "text-3xl rounded-full p-1 transition-all duration-200",
+                  rating === 0 ? 'grayscale-0' : (rating === item.value ? 'grayscale-0 scale-125' : 'grayscale'),
+                  'hover:grayscale-0 hover:scale-125'
+                )}
+              >
+                {item.emoji}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="font-bold">{item.label}</p>
+              <p>{item.description}</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </TooltipProvider>
   );
 };
+
 
 export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: MovieDetailsOutput, movieId: number }) {
   const [user, authLoading] = useAuthState(auth);
@@ -112,6 +117,9 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   
   const handleSaveRating = async () => {
     if (userRating === 0) return;
+    const ratingInfo = getRatingInfo(userRating);
+    if (!ratingInfo) return;
+
     // Saving a rating implies it's watched and removes it from the watchlist
     const success = await handleSave({ rating: userRating, watched: true, watchlist: false });
     if (success) {
@@ -119,7 +127,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
       setInWatchlist(false);
       toast({
         title: 'Rating Saved!',
-        description: `You rated ${movieDetails.title} ${userRating.toFixed(0)} stars.`,
+        description: `You rated ${movieDetails.title} as "${ratingInfo.label}".`,
       });
     }
   };
@@ -200,6 +208,8 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     </div>
   }
 
+  const currentRatingInfo = getRatingInfo(userRating);
+
   return (
     <>
     <RecommendDialog 
@@ -271,13 +281,17 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
 
       {watched && (
-        <div className="animate-in fade-in-50">
+        <div className="animate-in fade-in-50 space-y-2">
           <Label className="text-lg">Your Rating</Label>
-          <div className="flex flex-col items-start gap-4 mt-2 sm:flex-row sm:items-center">
-            <StarRatingInput rating={userRating} setRating={setUserRating} />
-            <Button onClick={handleSaveRating} disabled={userRating === 0}>Save Rating</Button>
+          <EmojiRatingInput rating={userRating} setRating={setUserRating} />
+          <div className="flex flex-col items-start gap-4 pt-2 sm:flex-row sm:items-center">
+            <Button onClick={handleSaveRating} disabled={userRating === 0}>
+                {currentRatingInfo ? `Save as "${currentRatingInfo.label}"` : 'Save Rating'}
+            </Button>
+             {userRating > 0 && (
+                <Button variant="ghost" onClick={() => setUserRating(0)}>Clear Rating</Button>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1">{userRating > 0 ? `You selected ${userRating.toFixed(0)} out of 10 stars.` : 'Select a rating to save.'}</p>
         </div>
       )}
     </div>

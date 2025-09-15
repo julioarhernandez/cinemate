@@ -29,6 +29,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getRatingInfo } from '@/lib/ratings';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface UserMovieData {
   watched?: boolean;
@@ -175,6 +177,7 @@ function MoviesPageContent() {
   }, [selectedGenres]);
 
   return (
+    <TooltipProvider>
     <div className="space-y-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -485,51 +488,62 @@ function MoviesPageContent() {
       {moviesWithUserData.length > 0 && (
         <>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {moviesWithUserData.map((movie) => (
-            <Link
-                href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`}
-                key={`${movie.id}-${movie.mediaType}`}
-                onClick={(e) => handleLinkClick(e, `/dashboard/movies/${movie.id}?type=${movie.mediaType}`)}
-              >
-                <Card className="group overflow-hidden h-full">
-                <CardHeader className="p-0">
-                    <div className="relative h-60 overflow-hidden">
-                    <Image
-                        src={movie.imageUrl}
-                        alt={movie.title}
-                        data-ai-hint={movie.imageHint}
-                        width={400}
-                        height={600}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    {movie.watched && (
-                        movie.isPrivate ? (
-                            <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1">
-                                <EyeOff className="h-3 w-3"/> Private
-                            </Badge>
-                        ) : (
-                            <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
-                        )
-                    )}
-                    </div>
-                </CardHeader>
-                <CardContent className="p-3">
-                    <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{movie.year}</p>
-                </CardContent>
-                <CardFooter className="p-3 pt-0">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Star className="h-4 w-4 text-amber-400" /> 
-                        <span>{movie.rating.toFixed(1)}</span>
-                        {movie.userRating && (
-                            <span className="flex items-center gap-1 text-primary font-bold">( <Star className="h-4 w-4"/> {movie.userRating} )</span>
-                        )}
-                    </div>
-                </CardFooter>
-                </Card>
-            </Link>
-            ))}
+            {moviesWithUserData.map((movie) => {
+                const ratingInfo = getRatingInfo(movie.userRating);
+                return (
+                    <Link
+                        href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`}
+                        key={`${movie.id}-${movie.mediaType}`}
+                        onClick={(e) => handleLinkClick(e, `/dashboard/movies/${movie.id}?type=${movie.mediaType}`)}
+                    >
+                        <Card className="group overflow-hidden h-full">
+                        <CardHeader className="p-0">
+                            <div className="relative h-60 overflow-hidden">
+                            <Image
+                                src={movie.imageUrl}
+                                alt={movie.title}
+                                data-ai-hint={movie.imageHint}
+                                width={400}
+                                height={600}
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                            {movie.watched && (
+                                movie.isPrivate ? (
+                                    <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1">
+                                        <EyeOff className="h-3 w-3"/> Private
+                                    </Badge>
+                                ) : (
+                                    <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
+                                )
+                            )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-3">
+                            <CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle>
+                            <p className="text-sm text-muted-foreground">{movie.year}</p>
+                        </CardContent>
+                        <CardFooter className="p-3 pt-0">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Star className="h-4 w-4 text-amber-400" /> 
+                                <span>{movie.rating.toFixed(1)}</span>
+                                {ratingInfo && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <span className="flex items-center gap-1 text-lg font-bold cursor-default">( {ratingInfo.emoji} )</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p className="font-bold">{ratingInfo.label}</p>
+                                            <p>{ratingInfo.description}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                )}
+                            </div>
+                        </CardFooter>
+                        </Card>
+                    </Link>
+                )
+            })}
         </div>
         <div className="flex items-center justify-center pt-4">
           {hasMore && (
@@ -548,6 +562,7 @@ function MoviesPageContent() {
         </>
       )}
     </div>
+    </TooltipProvider>
   );
 }
 

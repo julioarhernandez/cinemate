@@ -26,6 +26,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getRatingInfo } from '@/lib/ratings';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface User {
   id: string;
@@ -50,7 +52,7 @@ export default function ActivityPage() {
 
   // Filter states
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
+  const [ratingRange, setRatingRange] = useState<[number, number]>([1, 5]);
   const [timeRange, setTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
   const fetchFriendsAndActivity = useCallback(async () => {
@@ -123,7 +125,7 @@ export default function ActivityPage() {
       await Promise.all(ratingQueries);
 
       // 3. Sort all activities by date and take the most recent ones.
-      allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
+      allRatings.sort((a, b) => b.watchedAt.toMillis() - b.watchedAt.toMillis());
       const latestRatings = allRatings.slice(0, 20);
 
       // 4. Fetch movie details for the latest ratings.
@@ -202,6 +204,7 @@ export default function ActivityPage() {
   };
 
   return (
+    <TooltipProvider>
     <div className="space-y-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -253,8 +256,8 @@ export default function ActivityPage() {
                     </Popover>
                 </div>
                  <div className="space-y-2">
-                    <Label>Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
-                    <Slider value={ratingRange} onValueChange={setRatingRange} max={10} step={1} />
+                    <Label>Rating: {getRatingInfo(ratingRange[0])?.emoji} to {getRatingInfo(ratingRange[1])?.emoji}</Label>
+                    <Slider value={ratingRange} onValueChange={setRatingRange} min={1} max={5} step={1} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="time-range-filter">Time Range</Label>
@@ -290,50 +293,59 @@ export default function ActivityPage() {
           </div>
       ) : (
         <div className="space-y-6">
-          {filteredActivity.map((item) => (
-            <Card key={`${item.friend.id}-${item.movie.id}-${item.watchedAt.seconds}`} className="p-4">
-                <div className="flex items-start gap-4">
-                    <Avatar className="h-10 w-10 border">
-                        <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
-                        <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                    <p className="text-sm">
-                        <span className="font-bold">{item.friend.displayName}</span>
-                        {' '}watched{' '}
-                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
-                        {item.rating > 0 && (
-                        <>
-                            <span>&middot;</span>
-                            <div className="flex items-center gap-1 text-amber-500">
-                            <Star className="h-3 w-3 fill-current" />
-                            <span>{item.rating}</span>
-                            </div>
-                        </>
-                        )}
+          {filteredActivity.map((item) => {
+            const ratingInfo = getRatingInfo(item.rating);
+            return (
+                <Card key={`${item.friend.id}-${item.movie.id}-${item.watchedAt.seconds}`} className="p-4">
+                    <div className="flex items-start gap-4">
+                        <Avatar className="h-10 w-10 border">
+                            <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
+                            <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                        <p className="text-sm">
+                            <span className="font-bold">{item.friend.displayName}</span>
+                            {' '}watched{' '}
+                            <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
+                            {ratingInfo && (
+                            <>
+                                <span>&middot;</span>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 text-lg cursor-default">
+                                            {ratingInfo.emoji}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className="font-bold">{ratingInfo.label}</p>
+                                        <p>{ratingInfo.description}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </>
+                            )}
+                        </div>
+                        {item.notes && <p className="text-sm text-muted-foreground mt-2 pl-4 border-l-2">{item.notes}</p>}
+                        </div>
+                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                        <Image
+                            src={item.movie.imageUrl}
+                            alt={item.movie.title}
+                            data-ai-hint={item.movie.imageHint}
+                            width={64}
+                            height={96}
+                            className="rounded-sm object-cover aspect-[2/3]"
+                            />
+                        </Link>
                     </div>
-                     {item.notes && <p className="text-sm text-muted-foreground mt-2 pl-4 border-l-2">{item.notes}</p>}
-                    </div>
-                    <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
-                    <Image
-                        src={item.movie.imageUrl}
-                        alt={item.movie.title}
-                        data-ai-hint={item.movie.imageHint}
-                        width={64}
-                        height={96}
-                        className="rounded-sm object-cover aspect-[2/3]"
-                        />
-                    </Link>
-                </div>
-            </Card>
-          ))}
+                </Card>
+            )
+          })}
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
-
-    

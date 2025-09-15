@@ -31,6 +31,8 @@ import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { getRatingInfo } from '@/lib/ratings';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 interface FriendActivityItem {
@@ -312,6 +314,7 @@ export default function DashboardPage() {
   ];
 
   return (
+    <TooltipProvider>
     <div className="space-y-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -366,43 +369,53 @@ export default function DashboardPage() {
                 </div>
              ) : (
                 <div className="space-y-4">
-                  {friendActivity.map((item) => (
-                    <div key={`${item.friend.id}-${item.movie.id}`} className="flex items-start gap-4">
-                      <Avatar className="h-10 w-10 border">
-                         <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
-                         <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-bold text-foreground">{item.friend.displayName}</span>
-                          {' '}watched{' '}
-                          <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="block font-bold hover:underline">{item.movie.title}</Link>
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
-                          {item.rating > 0 && (
-                            <>
-                              <span>&middot;</span>
-                              <div className="flex items-center gap-1 text-amber-500">
-                                <Star className="h-3 w-3 fill-current" />
-                                <span>{item.rating}</span>
-                              </div>
-                            </>
-                          )}
+                  {friendActivity.map((item) => {
+                    const ratingInfo = getRatingInfo(item.rating);
+                    return (
+                        <div key={`${item.friend.id}-${item.movie.id}`} className="flex items-start gap-4">
+                        <Avatar className="h-10 w-10 border">
+                            <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
+                            <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <p className="text-sm text-muted-foreground">
+                            <span className="font-bold text-foreground">{item.friend.displayName}</span>
+                            {' '}watched{' '}
+                            <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="block font-bold hover:underline">{item.movie.title}</Link>
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
+                            {ratingInfo && (
+                                <>
+                                <span>&middot;</span>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 text-lg cursor-default">
+                                            {ratingInfo.emoji}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className="font-bold">{ratingInfo.label}</p>
+                                        <p>{ratingInfo.description}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                </>
+                            )}
+                            </div>
                         </div>
-                      </div>
-                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
-                        <Image
-                            src={item.movie.imageUrl}
-                            alt={item.movie.title}
-                            data-ai-hint={item.movie.imageHint}
-                            width={40}
-                            height={60}
-                            className="rounded-sm object-cover aspect-[2/3]"
-                          />
-                      </Link>
-                    </div>
-                  ))}
+                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                            <Image
+                                src={item.movie.imageUrl}
+                                alt={item.movie.title}
+                                data-ai-hint={item.movie.imageHint}
+                                width={40}
+                                height={60}
+                                className="rounded-sm object-cover aspect-[2/3]"
+                            />
+                        </Link>
+                        </div>
+                    )
+                  })}
                 </div>
              )}
           </CardContent>
@@ -486,5 +499,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
     </div>
+    </TooltipProvider>
   );
 }

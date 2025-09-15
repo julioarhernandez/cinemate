@@ -43,6 +43,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSearchParams } from 'next/navigation';
+import { getRatingInfo } from '@/lib/ratings';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface UserMovieData {
   watched?: boolean;
@@ -106,7 +108,7 @@ export default function CollectionsPage() {
 
   // Filter states
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [ratingRange, setRatingRange] = useState<[number, number]>([0, 10]);
+  const [ratingRange, setRatingRange] = useState<[number, number]>([1, 5]);
   const [yearRange, setYearRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
@@ -236,7 +238,7 @@ export default function CollectionsPage() {
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (ratingRange[0] !== 0 || ratingRange[1] !== 10) count++;
+    if (ratingRange[0] !== 1 || ratingRange[1] !== 5) count++;
     if (yearRange.start || yearRange.end) count++;
     if (selectedGenres.length > 0) count++;
     if (mediaTypeFilter !== 'all') count++;
@@ -244,7 +246,7 @@ export default function CollectionsPage() {
   }, [ratingRange, yearRange, selectedGenres, mediaTypeFilter]);
 
   const resetFilters = () => {
-    setRatingRange([0, 10]);
+    setRatingRange([1, 5]);
     setYearRange({ start: '', end: '' });
     setSelectedGenres([]);
     setMediaTypeFilter('all');
@@ -266,8 +268,8 @@ export default function CollectionsPage() {
     return moviesWithUserData.filter(movie => {
         if (searchTerm && !movie.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
         if (mediaTypeFilter !== 'all' && movie.mediaType !== mediaTypeFilter) return false;
-        const movieUserRating = movie.userRating ?? -1;
-        if (movieUserRating !== -1 && (ratingRange[0] !== 0 || ratingRange[1] !== 10) && (movieUserRating < ratingRange[0] || movieUserRating > ratingRange[1])) return false;
+        const movieUserRating = movie.userRating ?? 0;
+        if (movieUserRating > 0 && (ratingRange[0] !== 1 || ratingRange[1] !== 5) && (movieUserRating < ratingRange[0] || movieUserRating > ratingRange[1])) return false;
         const movieYear = parseInt(movie.year);
         const startYear = yearRange.start ? parseInt(yearRange.start) : -Infinity;
         const endYear = yearRange.end ? parseInt(yearRange.end) : Infinity;
@@ -376,6 +378,7 @@ export default function CollectionsPage() {
   }
 
   return (
+    <TooltipProvider>
     <div className="space-y-8">
       <div>
         <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -435,8 +438,8 @@ export default function CollectionsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Your Rating: {ratingRange[0]} - {ratingRange[1]} stars</Label>
-                                <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} max={10} step={1} />
+                                <Label>Your Rating: {getRatingInfo(ratingRange[0])?.emoji} to {getRatingInfo(ratingRange[1])?.emoji}</Label>
+                                <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} min={1} max={5} step={1} />
                             </div>
                             <div className="space-y-2">
                                 <Label>Release Year</Label>
@@ -505,31 +508,44 @@ export default function CollectionsPage() {
                 {paginatedMovies.length > 0 && (
                     <>
                         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                            {paginatedMovies.map((movie) => (
-                            <Link href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`} key={`${movie.id}-${movie.mediaType}`}>
-                                <Card className="group overflow-hidden h-full">
-                                <CardHeader className="p-0">
-                                    <div className="relative h-60 overflow-hidden">
-                                    <Image src={movie.imageUrl} alt={movie.title} data-ai-hint={movie.imageHint} width={400} height={600} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                    <Badge variant={movie.mediaType === 'tv' ? 'destructive' : 'secondary'} className="absolute bottom-2 left-2">{movie.mediaType === 'tv' ? 'TV' : 'Movie'}</Badge>
-                                    {movie.isPrivate ? (
-                                        <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1"><EyeOff className="h-3 w-3"/> Private</Badge>
-                                    ) : (
-                                        <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
-                                    )}
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-3"><CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle><p className="text-sm text-muted-foreground">{movie.year}</p></CardContent>
-                                <CardFooter className="p-3 pt-0">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Star className="h-4 w-4 text-amber-400" /> <span>{movie.rating.toFixed(1)}</span>
-                                        {movie.userRating && (<span className="flex items-center gap-1 text-primary font-bold">( <Star className="h-4 w-4"/> {movie.userRating} )</span>)}
-                                    </div>
-                                </CardFooter>
-                                </Card>
-                            </Link>
-                            ))}
+                            {paginatedMovies.map((movie) => {
+                             const ratingInfo = getRatingInfo(movie.userRating);
+                             return (
+                                <Link href={`/dashboard/movies/${movie.id}?type=${movie.mediaType}`} key={`${movie.id}-${movie.mediaType}`}>
+                                    <Card className="group overflow-hidden h-full">
+                                    <CardHeader className="p-0">
+                                        <div className="relative h-60 overflow-hidden">
+                                        <Image src={movie.imageUrl} alt={movie.title} data-ai-hint={movie.imageHint} width={400} height={600} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                        <Badge variant={movie.mediaType === 'tv' ? 'destructive' : 'secondary'} className="absolute bottom-2 left-2">{movie.mediaType === 'tv' ? 'TV' : 'Movie'}</Badge>
+                                        {movie.isPrivate ? (
+                                            <Badge variant="destructive" className="absolute top-2 right-2 flex items-center gap-1"><EyeOff className="h-3 w-3"/> Private</Badge>
+                                        ) : (
+                                            <Badge className="absolute top-2 right-2 bg-primary/80">Watched</Badge>
+                                        )}
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-3"><CardTitle className="truncate text-base font-bold">{movie.title}</CardTitle><p className="text-sm text-muted-foreground">{movie.year}</p></CardContent>
+                                    <CardFooter className="p-3 pt-0">
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <Star className="h-4 w-4 text-amber-400" /> <span>{movie.rating.toFixed(1)}</span>
+                                            {ratingInfo && (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="flex items-center gap-1 text-lg font-bold cursor-default">( {ratingInfo.emoji} )</span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="font-bold">{ratingInfo.label}</p>
+                                                        <p>{ratingInfo.description}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            )}
+                                        </div>
+                                    </CardFooter>
+                                    </Card>
+                                </Link>
+                             )
+                            })}
                         </div>
                         <div className="flex items-center justify-between pt-4">
                             <p className="text-sm text-muted-foreground">{totalPages > 0 ? `Page ${currentPage} of ${totalPages} ` : ''}({filteredWatchedMovies.length} item{filteredWatchedMovies.length === 1 ? '' : 's'})</p>
@@ -783,5 +799,6 @@ export default function CollectionsPage() {
 
      </Tabs>
     </div>
+    </TooltipProvider>
   );
 }
