@@ -16,7 +16,7 @@ import { Loader2, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -117,6 +117,11 @@ export function RecommendDialog({
       const batch = writeBatch(db);
       const timestamp = serverTimestamp();
 
+      // Get the current user's rating for this movie
+      const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movie.id.toString());
+      const ratingDoc = await getDoc(ratingDocRef);
+      const userRating = ratingDoc.exists() ? ratingDoc.data().rating : null;
+
       // Create a record of the sent recommendation for the current user
       const sentRecRef = doc(collection(db, 'users', user.uid, 'sentRecommendations'));
       batch.set(sentRecRef, {
@@ -135,6 +140,7 @@ export function RecommendDialog({
             fromId: user.uid,
             fromName: user.displayName,
             fromPhotoURL: user.photoURL || '',
+            fromRating: userRating, // Add the rating here
             createdAt: timestamp,
             status: 'unread', // You can use this later to show notifications
           });

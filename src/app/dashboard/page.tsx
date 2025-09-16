@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/card';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp, doc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp, doc, deleteDoc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
@@ -50,6 +50,7 @@ export interface IncomingRecommendation {
         name: string;
         photoURL?: string;
     };
+    fromRating?: number;
     createdAt: Timestamp;
 }
 
@@ -137,7 +138,13 @@ export default function DashboardPage() {
         }
         
         try {
-          // 1. Get the user's friends
+          // 1. Get user tier to determine limit
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          const isStandardTier = userDoc.data()?.tier === 'standard';
+          const activityLimit = isStandardTier ? 5 : 10;
+          
+          // 2. Get the user's friends
           const friendsRef = collection(db, 'users', user.uid, 'friends');
           const friendsSnapshot = await getDocs(friendsRef);
           const friends = friendsSnapshot.docs.map((doc) => ({
@@ -151,7 +158,7 @@ export default function DashboardPage() {
             return;
           }
 
-          // 2. Fetch recent ratings for all friends
+          // 3. Fetch recent ratings for all friends
           let allRatings: {
             friend: { id: string; displayName: string; photoURL?: string };
             movieId: string;
@@ -186,11 +193,11 @@ export default function DashboardPage() {
             });
           }
 
-          // 3. Sort all activities by date and take the latest 10
+          // 4. Sort all activities by date and take the latest based on tier
           allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
-          const latestRatings = allRatings.slice(0, 10);
+          const latestRatings = allRatings.slice(0, activityLimit);
 
-          // 4. Fetch movie details for the latest 10
+          // 5. Fetch movie details for the latest ratings
           const activityWithMovieDetails = await Promise.all(
             latestRatings.map(async (rating) => {
               const movieDetails = await getMovieDetails({
@@ -256,6 +263,7 @@ export default function DashboardPage() {
                         name: data.fromName,
                         photoURL: data.fromPhotoURL,
                     },
+                    fromRating: data.fromRating,
                     createdAt: data.createdAt,
                 };
             });
@@ -325,82 +333,97 @@ export default function DashboardPage() {
         </p>
       </div>
 
-       <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Start a New Journey</CardTitle>
-            <CardDescription>
-              Ready for your next movie night?
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row">
-            <Button asChild className="w-full">
-              <Link href="/dashboard/movies">
-                <Film className="mr-2 h-4 w-4" /> Browse Movies/Shows
-              </Link>
-            </Button>
-            <Button asChild variant="secondary" className="w-full">
-              <Link href="/dashboard/ai-recommender">
-                <Sparkles className="mr-2 h-4 w-4" /> Get AI Suggestion
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
       <div className="grid gap-6 lg:grid-cols-2">
          <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Recommended For You</CardTitle>
-            <CardDescription>
-              Movies your friends think you'd like.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             {loadingRecs ? (
-                <div className="flex justify-center items-center h-40">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-             ) : !incomingRecommendations || incomingRecommendations.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                    <p>No new recommendations.</p>
-                    <p className="text-sm">Recommendations from friends will appear here.</p>
-                </div>
-             ) : (
-                <div className="space-y-4">
-                  {incomingRecommendations.map((item) => (
-                    <div key={item.id} className="flex items-start gap-4">
-                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
-                        <Image
-                            src={item.movie.imageUrl}
-                            alt={item.movie.title}
-                            data-ai-hint={item.movie.imageHint}
-                            width={56}
-                            height={84}
-                            className="rounded-sm object-cover aspect-[2/3]"
-                          />
-                      </Link>
-                      <div className="flex-1">
-                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
-                        <div className="text-xs text-muted-foreground mt-1 mb-2">
-                            <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
-                        </div>
-                        <div className="text-sm flex items-center gap-2 mb-3">
-                           <Avatar className="h-6 w-6">
-                              <AvatarImage src={item.from.photoURL} alt={item.from.name} />
-                              <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
-                           </Avatar>
-                           <p>From <span className="font-semibold">{item.from.name}</span></p>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
-                            <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-             )}
-          </CardContent>
+            <CardHeader>
+                <CardTitle className="font-headline">Start a New Journey</CardTitle>
+                <CardDescription>
+                Ready for your next movie night?
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 sm:flex-row">
+                <Button asChild className="w-full">
+                <Link href="/dashboard/movies">
+                    <Film className="mr-2 h-4 w-4" /> Browse Movies/Shows
+                </Link>
+                </Button>
+                <Button asChild variant="secondary" className="w-full">
+                <Link href="/dashboard/ai-recommender">
+                    <Sparkles className="mr-2 h-4 w-4" /> Get AI Suggestion
+                </Link>
+                </Button>
+            </CardContent>
         </Card>
-      </div>
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Recommended For You</CardTitle>
+                <CardDescription>
+                Movies your friends think you'd like.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {loadingRecs ? (
+                    <div className="flex justify-center items-center h-40">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                ) : !incomingRecommendations || incomingRecommendations.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                        <p>No new recommendations.</p>
+                        <p className="text-sm">Recommendations from friends will appear here.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                    {incomingRecommendations.slice(0, 3).map((item) => {
+                        const ratingInfo = getRatingInfo(item.fromRating);
+                        return (
+                        <div key={item.id} className="flex items-start gap-4">
+                            <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
+                            <Image
+                                src={item.movie.imageUrl}
+                                alt={item.movie.title}
+                                data-ai-hint={item.movie.imageHint}
+                                width={56}
+                                height={84}
+                                className="rounded-sm object-cover aspect-[2/3]"
+                                />
+                        </Link>
+                        <div className="flex-1">
+                            <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
+                            <div className="text-xs text-muted-foreground mt-1 mb-2">
+                                <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
+                            </div>
+                            <div className="text-sm flex items-center gap-2 mb-3">
+                                <Avatar className="h-6 w-6">
+                                    <AvatarImage src={item.from.photoURL} alt={item.from.name} />
+                                    <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                                </Avatar>
+                                <p>From <span className="font-semibold">{item.from.name}</span></p>
+                                {ratingInfo && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1 text-lg cursor-default">
+                                            {ratingInfo.emoji}
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p><span className="font-semibold">{item.from.name}</span> rated it:</p>
+                                        <p className="font-bold">{ratingInfo.label}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                )}
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
+                                <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
+                            </Button>
+                        </div>
+                        </div>
+                        )
+                    })}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+       </div>
 
 
       <div className="grid gap-4 md:grid-cols-3">

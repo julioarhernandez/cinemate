@@ -82,6 +82,7 @@ interface IncomingRecommendation {
         name: string;
         photoURL?: string;
     };
+    fromRating?: number;
     createdAt: Timestamp;
 }
 
@@ -158,7 +159,7 @@ export default function CollectionsPage() {
         // Fetch AI recommendation history
         const aiHistoryCollection = collection(db, 'users', user.uid, 'recommendations');
         const aiHistoryQuery = query(aiHistoryCollection, orderBy('createdAt', 'desc'));
-        const aiHistorySnapshot = await getDocs(aiHistoryQuery);
+        const aiHistorySnapshot = await getDocs(aiHistoryCollection);
         const aiHistoryData = aiHistorySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
@@ -209,6 +210,7 @@ export default function CollectionsPage() {
                     name: data.fromName,
                     photoURL: data.fromPhotoURL,
                 },
+                fromRating: data.fromRating,
                 createdAt: data.createdAt,
             };
         });
@@ -738,61 +740,77 @@ export default function CollectionsPage() {
                 <div className="space-y-4">
                     {incomingRecommendations
                         .filter(item => !searchTerm || item.movie.title.toLowerCase().includes(searchTerm.toLowerCase()))
-                        .map(item => (
-                        <Card key={item.id} className="p-4">
-                            <div className="flex items-start gap-4">
-                                <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
-                                    <Image
-                                        src={item.movie.imageUrl}
-                                        alt={item.movie.title}
-                                        data-ai-hint={item.movie.imageHint}
-                                        width={80}
-                                        height={120}
-                                        className="rounded-sm object-cover aspect-[2/3]"
-                                    />
-                                </Link>
-                                <div className="flex-1">
-                                    <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
-                                        <h3 className="text-lg font-bold hover:underline">{item.movie.title} ({item.movie.year})</h3>
-                                    </Link>
-                                    <p className="text-xs text-muted-foreground mb-2">
-                                        {formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}
-                                    </p>
-                                    <div className="text-sm flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
-                                            <AvatarImage src={item.from.photoURL} alt={item.from.name} />
-                                            <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
-                                        </Avatar>
-                                        <p>Recommended by <span className="font-semibold">{item.from.name}</span></p>
+                        .map(item => {
+                            const ratingInfo = getRatingInfo(item.fromRating);
+                            return (
+                                <Card key={item.id} className="p-4">
+                                    <div className="flex items-start gap-4">
+                                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
+                                            <Image
+                                                src={item.movie.imageUrl}
+                                                alt={item.movie.title}
+                                                data-ai-hint={item.movie.imageHint}
+                                                width={80}
+                                                height={120}
+                                                className="rounded-sm object-cover aspect-[2/3]"
+                                            />
+                                        </Link>
+                                        <div className="flex-1">
+                                            <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
+                                                <h3 className="text-lg font-bold hover:underline">{item.movie.title} ({item.movie.year})</h3>
+                                            </Link>
+                                            <p className="text-xs text-muted-foreground mb-2">
+                                                {formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}
+                                            </p>
+                                            <div className="text-sm flex items-center gap-2">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={item.from.photoURL} alt={item.from.name} />
+                                                    <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <p>From <span className="font-semibold">{item.from.name}</span></p>
+                                                {ratingInfo && (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="flex items-center gap-1 text-lg cursor-default">
+                                                            {ratingInfo.emoji}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p><span className="font-semibold">{item.from.name}</span> rated it:</p>
+                                                        <p className="font-bold">{ratingInfo.label}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
+                                                <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
+                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size="sm" variant="outline"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                    <AlertDialogTitle>Dismiss Recommendation?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Are you sure you want to dismiss this recommendation for "{item.movie.title}"?
+                                                    </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDismissRecommendation(item.id)} variant="destructive">
+                                                        Dismiss
+                                                    </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
-                                        <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
-                                    </Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button size="sm" variant="outline"><Trash2 className="mr-2 h-4 w-4" /> Dismiss</Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                            <AlertDialogTitle>Dismiss Recommendation?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Are you sure you want to dismiss this recommendation for "{item.movie.title}"?
-                                            </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDismissRecommendation(item.id)} variant="destructive">
-                                                Dismiss
-                                            </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
+                                </Card>
+                            )
+                        })}
                 </div>
             )}
         </TabsContent>
