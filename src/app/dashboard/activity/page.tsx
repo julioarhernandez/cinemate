@@ -43,12 +43,21 @@ interface FriendActivityItem {
   notes?: string;
 }
 
+interface CachedActivity {
+    data: FriendActivityItem[];
+    timestamp: number;
+}
+
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+
 export default function ActivityPage() {
   const [user, authLoading] = useAuthState(auth);
   const [activity, setActivity] = useState<FriendActivityItem[]>([]);
   const [friends, setFriends] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  const [cachedActivity, setCachedActivity] = useState<CachedActivity | null>(null);
 
   // Filter states
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
@@ -60,6 +69,15 @@ export default function ActivityPage() {
       setLoading(false);
       return;
     }
+
+    const now = new Date().getTime();
+    if (cachedActivity && (now - cachedActivity.timestamp < CACHE_DURATION)) {
+        setActivity(cachedActivity.data);
+        setLoading(false);
+        return;
+    }
+
+
     setLoading(true);
 
     try {
@@ -158,6 +176,7 @@ export default function ActivityPage() {
       
       const finalActivity = activityWithMovieDetails.filter((item): item is FriendActivityItem => item !== null);
       setActivity(finalActivity);
+      setCachedActivity({ data: finalActivity, timestamp: new Date().getTime() });
 
     } catch (error) {
       console.error("Failed to fetch activity:", error);
@@ -166,7 +185,7 @@ export default function ActivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedFriends, toast, friends]);
+  }, [user, selectedFriends, toast, friends, cachedActivity]);
 
   useEffect(() => {
     if (user) {
@@ -357,5 +376,3 @@ export default function ActivityPage() {
     </TooltipProvider>
   );
 }
-
-    
