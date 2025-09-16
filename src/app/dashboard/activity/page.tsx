@@ -51,12 +51,12 @@ export default function ActivityPage() {
   const { toast } = useToast();
   
   // Filter states
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [ratingRange, setRatingRange] = useState<[number, number]>([1, 5]);
   const [timeRange, setTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
   // Staged filter states for form submission
-  const [stagedSelectedFriends, setStagedSelectedFriends] = useState<string[]>([]);
+  const [stagedSelectedFriend, setStagedSelectedFriend] = useState<string | null>(null);
   const [stagedRatingRange, setStagedRatingRange] = useState<[number, number]>([1, 5]);
   const [stagedTimeRange, setStagedTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
@@ -87,7 +87,7 @@ export default function ActivityPage() {
   }, [fetchFriends]);
 
   const fetchActivity = useCallback(async () => {
-    if (!user || selectedFriends.length === 0) {
+    if (!user || !selectedFriend) {
       setActivity([]);
       setLoading(false);
       return;
@@ -96,16 +96,15 @@ export default function ActivityPage() {
     setLoading(true);
 
     try {
-      const friendsToQuery = friends.filter(f => selectedFriends.includes(f.id));
+      const friendToQuery = friends.find(f => f.id === selectedFriend);
 
-      if (friendsToQuery.length === 0) {
+      if (!friendToQuery) {
         setActivity([]);
         setLoading(false);
         return;
       }
 
-      let allRatings: {
-        friend: User;
+      let ratings: {
         movieId: string;
         mediaType: 'movie' | 'tv';
         rating: number;
@@ -113,44 +112,37 @@ export default function ActivityPage() {
         notes?: string;
       }[] = [];
 
-      const ratingQueries = friendsToQuery.map(async (friend) => {
-        const ratingsRef = collection(db, 'users', friend.id, 'ratings');
-        let q = query(
-          ratingsRef,
-          where('watched', '==', true),
-          orderBy('updatedAt', 'desc'),
-          limit(10)
-        );
-        
-        const snapshot = await getDocs(q);
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.isPrivate !== true) {
-            allRatings.push({
-              friend,
-              movieId: doc.id,
-              mediaType: data.mediaType || 'movie',
-              rating: data.rating || 0,
-              watchedAt: data.updatedAt,
-              notes: data.notes || '',
-            });
-          }
-        });
-      });
-
-      await Promise.all(ratingQueries);
+      const ratingsRef = collection(db, 'users', friendToQuery.id, 'ratings');
+      let q = query(
+        ratingsRef,
+        where('watched', '==', true),
+        orderBy('updatedAt', 'desc'),
+        limit(10)
+      );
       
-      allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
+      const snapshot = await getDocs(q);
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.isPrivate !== true) {
+          ratings.push({
+            movieId: doc.id,
+            mediaType: data.mediaType || 'movie',
+            rating: data.rating || 0,
+            watchedAt: data.updatedAt,
+            notes: data.notes || '',
+          });
+        }
+      });
       
       const activityWithMovieDetails = await Promise.all(
-        allRatings.map(async (rating) => {
+        ratings.map(async (rating) => {
           const movieDetails = await getMovieDetails({
             id: parseInt(rating.movieId, 10),
             mediaType: rating.mediaType,
           });
           if (movieDetails && movieDetails.title !== 'Unknown Media') {
             return {
-              friend: rating.friend,
+              friend: friendToQuery,
               movie: movieDetails,
               rating: rating.rating,
               watchedAt: rating.watchedAt,
@@ -171,21 +163,21 @@ export default function ActivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, friends, selectedFriends, toast]);
+  }, [user, friends, selectedFriend, toast]);
   
   const handleApplyFilters = () => {
-    setSelectedFriends(stagedSelectedFriends);
+    setSelectedFriend(stagedSelectedFriend);
     setRatingRange(stagedRatingRange);
     setTimeRange(stagedTimeRange);
   };
 
   useEffect(() => {
-    if (selectedFriends.length > 0) {
+    if (selectedFriend) {
       fetchActivity();
     } else {
       setActivity([]);
     }
-  }, [selectedFriends, fetchActivity]);
+  }, [selectedFriend, fetchActivity]);
 
 
   const filteredActivity = useMemo(() => {
@@ -214,16 +206,6 @@ export default function ActivityPage() {
     });
   }, [activity, ratingRange, timeRange]);
 
-  const handleFriendSelect = (friendId: string) => {
-    setStagedSelectedFriends(prev => {
-        if (prev.includes(friendId)) {
-            return prev.filter(id => id !== friendId);
-        } else {
-            return [...prev, friendId];
-        }
-    });
-  };
-
   return (
     <TooltipProvider>
     <div className="space-y-8">
@@ -241,40 +223,16 @@ export default function ActivityPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                  <div className="space-y-2 md:col-span-1">
                     <Label htmlFor="friend-filter">Friend</Label>
-                     <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                className="w-full justify-between"
-                            >
-                                <span className="truncate">
-                                    {stagedSelectedFriends.length === 0 && 'Select friends...'}
-                                    {stagedSelectedFriends.length === 1 && friends.find(f => f.id === stagedSelectedFriends[0])?.displayName}
-                                    {stagedSelectedFriends.length > 1 && `${stagedSelectedFriends.length} friends selected`}
-                                </span>
-                                {stagedSelectedFriends.length > 0 && (
-                                    <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setStagedSelectedFriends([])}}/>
-                                )}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                           <ScrollArea className="max-h-60">
-                            <div className="p-2">
+                     <Select value={stagedSelectedFriend || ''} onValueChange={(value) => setStagedSelectedFriend(value)}>
+                        <SelectTrigger id="friend-filter">
+                            <SelectValue placeholder="Select a friend" />
+                        </SelectTrigger>
+                        <SelectContent>
                             {friends.map(friend => (
-                                <div key={friend.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent" onClick={() => handleFriendSelect(friend.id)}>
-                                    <Checkbox
-                                        id={`friend-${friend.id}`}
-                                        checked={stagedSelectedFriends.includes(friend.id)}
-                                        onCheckedChange={() => handleFriendSelect(friend.id)}
-                                    />
-                                    <Label htmlFor={`friend-${friend.id}`} className="font-normal flex-1 cursor-pointer">{friend.displayName}</Label>
-                                </div>
+                                <SelectItem key={friend.id} value={friend.id}>{friend.displayName}</SelectItem>
                             ))}
-                            </div>
-                           </ScrollArea>
-                        </PopoverContent>
-                    </Popover>
+                        </SelectContent>
+                    </Select>
                 </div>
                  <div className="space-y-2 md:col-span-1">
                     <Label>Rating: {getRatingInfo(stagedRatingRange[0])?.emoji} to {getRatingInfo(stagedRatingRange[1])?.emoji}</Label>
@@ -295,7 +253,7 @@ export default function ActivityPage() {
                     </Select>
                 </div>
                 <div className="md:col-span-1">
-                  <Button onClick={handleApplyFilters} className="w-full" disabled={stagedSelectedFriends.length === 0}>
+                  <Button onClick={handleApplyFilters} className="w-full" disabled={!stagedSelectedFriend}>
                     <Search className="mr-2 h-4 w-4" />
                     Apply Filters
                   </Button>
@@ -312,7 +270,7 @@ export default function ActivityPage() {
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">No Activity Found</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              {selectedFriends.length === 0 ? "Select a friend and apply filters to see their activity." : "No friend activity matches your filters. Or maybe it's time to make some friends!"}
+              {!selectedFriend ? "Select a friend and apply filters to see their activity." : "No friend activity matches your filters. Or maybe it's time to make some friends!"}
             </p>
              <Button asChild className="mt-4">
               <Link href="/dashboard/friends">Manage Friends</Link>
@@ -376,5 +334,3 @@ export default function ActivityPage() {
     </TooltipProvider>
   );
 }
-
-    
