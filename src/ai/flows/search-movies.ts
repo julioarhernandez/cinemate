@@ -72,10 +72,8 @@ export async function searchMovies(
     url = `https://api.themoviedb.org/3/discover/${endpoint}`;
     params.append('sort_by', sortBy);
     
-    // When sorting by rating, filter by a minimum number of votes for more reliable results
-    if (sortBy.includes('vote_average')) {
-        params.append('vote_count.gte', '300');
-    }
+    // Always filter by a minimum number of votes for more reliable results
+    params.append('vote_count.gte', '200');
 
     const today = new Date().toISOString().split('T')[0];
     const dateParamPrefix = mediaType === 'tv' ? 'first_air_date' : 'primary_release_date';
