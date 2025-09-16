@@ -325,6 +325,84 @@ export default function DashboardPage() {
         </p>
       </div>
 
+       <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Start a New Journey</CardTitle>
+            <CardDescription>
+              Ready for your next movie night?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 sm:flex-row">
+            <Button asChild className="w-full">
+              <Link href="/dashboard/movies">
+                <Film className="mr-2 h-4 w-4" /> Browse Movies/Shows
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" className="w-full">
+              <Link href="/dashboard/ai-recommender">
+                <Sparkles className="mr-2 h-4 w-4" /> Get AI Suggestion
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+         <Card>
+          <CardHeader>
+            <CardTitle className="font-headline">Recommended For You</CardTitle>
+            <CardDescription>
+              Movies your friends think you'd like.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             {loadingRecs ? (
+                <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+             ) : !incomingRecommendations || incomingRecommendations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                    <p>No new recommendations.</p>
+                    <p className="text-sm">Recommendations from friends will appear here.</p>
+                </div>
+             ) : (
+                <div className="space-y-4">
+                  {incomingRecommendations.map((item) => (
+                    <div key={item.id} className="flex items-start gap-4">
+                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
+                        <Image
+                            src={item.movie.imageUrl}
+                            alt={item.movie.title}
+                            data-ai-hint={item.movie.imageHint}
+                            width={56}
+                            height={84}
+                            className="rounded-sm object-cover aspect-[2/3]"
+                          />
+                      </Link>
+                      <div className="flex-1">
+                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
+                        <div className="text-xs text-muted-foreground mt-1 mb-2">
+                            <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
+                        </div>
+                        <div className="text-sm flex items-center gap-2 mb-3">
+                           <Avatar className="h-6 w-6">
+                              <AvatarImage src={item.from.photoURL} alt={item.from.name} />
+                              <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                           </Avatar>
+                           <p>From <span className="font-semibold">{item.from.name}</span></p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
+                            <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             )}
+          </CardContent>
+        </Card>
+      </div>
+
+
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
           <Link href={stat.href} key={stat.title}>
@@ -349,7 +427,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Friend Activity</CardTitle>
@@ -420,82 +498,8 @@ export default function DashboardPage() {
              )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Recommended For You</CardTitle>
-            <CardDescription>
-              Movies your friends think you'd like.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             {loadingRecs ? (
-                <div className="flex justify-center items-center h-40">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-             ) : !incomingRecommendations || incomingRecommendations.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                    <p>No new recommendations.</p>
-                    <p className="text-sm">Recommendations from friends will appear here.</p>
-                </div>
-             ) : (
-                <div className="space-y-4">
-                  {incomingRecommendations.map((item) => (
-                    <div key={item.id} className="flex items-start gap-4">
-                       <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="flex-shrink-0">
-                        <Image
-                            src={item.movie.imageUrl}
-                            alt={item.movie.title}
-                            data-ai-hint={item.movie.imageHint}
-                            width={56}
-                            height={84}
-                            className="rounded-sm object-cover aspect-[2/3]"
-                          />
-                      </Link>
-                      <div className="flex-1">
-                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="font-bold hover:underline">{item.movie.title}</Link>
-                        <div className="text-xs text-muted-foreground mt-1 mb-2">
-                            <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
-                        </div>
-                        <div className="text-sm flex items-center gap-2 mb-3">
-                           <Avatar className="h-6 w-6">
-                              <AvatarImage src={item.from.photoURL} alt={item.from.name} />
-                              <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
-                           </Avatar>
-                           <p>From <span className="font-semibold">{item.from.name}</span></p>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
-                            <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-             )}
-          </CardContent>
-        </Card>
       </div>
 
-       <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Start a New Journey</CardTitle>
-            <CardDescription>
-              Ready for your next movie night?
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row">
-            <Button asChild className="w-full">
-              <Link href="/dashboard/movies">
-                <Film className="mr-2 h-4 w-4" /> Browse Movies/Shows
-              </Link>
-            </Button>
-            <Button asChild variant="secondary" className="w-full">
-              <Link href="/dashboard/ai-recommender">
-                <Sparkles className="mr-2 h-4 w-4" /> Get AI Suggestion
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
     </div>
     </TooltipProvider>
   );
