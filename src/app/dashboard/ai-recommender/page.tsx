@@ -105,12 +105,6 @@ export default function AiRecommenderPage() {
             Let our AI find the perfect movie for you based on your unique tastes.
             </p>
         </div>
-        <Button asChild>
-            <Link href="/dashboard/collections?tab=ai-recommendations">
-                <Library className="mr-2 h-4 w-4" />
-                View Full Library
-            </Link>
-        </Button>
       </div>
 
       <AiRecommenderForm onNewRecommendation={handleNewRecommendation} />
