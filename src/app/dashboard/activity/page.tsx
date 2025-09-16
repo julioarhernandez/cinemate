@@ -8,7 +8,7 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { Loader2, Star, ListFilter, X, Check } from 'lucide-react';
+import { Loader2, Star, ListFilter, X, Check, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
