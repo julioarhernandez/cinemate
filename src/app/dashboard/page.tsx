@@ -216,7 +216,7 @@ export default function DashboardPage() {
   return (
     <TooltipProvider>
     <div className="space-y-8">
-      <Card className="relative flex min-h-[200px] flex-col justify-end overflow-hidden rounded-xl p-6">
+      <div className="relative flex min-h-[200px] flex-col justify-end overflow-hidden rounded-xl border p-6 shadow-sm">
         <Image
           src="/bg.png"
           alt="Abstract cinema background"
@@ -233,7 +233,7 @@ export default function DashboardPage() {
             Here's a quick look at your MovieCircles world.
             </p>
         </div>
-      </Card>
+      </div>
 
 
       <div className="grid gap-6 lg:grid-cols-2">
