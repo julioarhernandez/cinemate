@@ -198,7 +198,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
             const watchlistSnapshot = await getCountFromServer(watchlistQuery);
             const watchlistCount = watchlistSnapshot.data().count;
 
-            if (watchlistCount >= 10) {
+            if (watchlistCount >= 5) {
                 setShowLimitAlert(true);
                 return;
             }
@@ -243,7 +243,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
             <Gem className="text-amber-500" /> Watchlist Limit Reached
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Your watchlist is full. Standard plan users can save up to 10 items. Please upgrade your plan to add more.
+            Your watchlist is full. Standard plan users can save up to 5 items. Please upgrade your plan to add more.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -339,4 +339,3 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   );
 }
 
-    
