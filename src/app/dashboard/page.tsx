@@ -218,7 +218,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <Card className="relative flex min-h-[200px] flex-col justify-end overflow-hidden rounded-xl p-6">
         <Image
-          src="https://picsum.photos/seed/dashboard/1200/400"
+          src="/bg.png"
           alt="Abstract cinema background"
           data-ai-hint="abstract cinema"
           fill

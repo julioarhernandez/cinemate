@@ -80,7 +80,7 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-background">
       <Image
-        src="https://picsum.photos/1920/1080"
+        src="/bg.png"
         alt="Background"
         data-ai-hint="cinema background"
         fill
