@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/card';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp, doc, deleteDoc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, getCountFromServer, getDocs, orderBy, limit, Timestamp, doc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getMovieDetails, type MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
@@ -33,14 +33,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { getRatingInfo } from '@/lib/ratings';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-
-interface FriendActivityItem {
-  friend: { id: string; displayName: string; photoURL?: string; };
-  movie: MovieDetailsOutput;
-  rating: number;
-  watchedAt: Timestamp;
-}
 
 export interface IncomingRecommendation {
     id: string;
@@ -59,9 +51,7 @@ export default function DashboardPage() {
   const [watchedCount, setWatchedCount] = useState<number | null>(null);
   const [friendCount, setFriendCount] = useState<number | null>(null);
   const [recommendationCount, setRecommendationCount] = useState<number | null>(null);
-  const [friendActivity, setFriendActivity] = useState<FriendActivityItem[]>([]);
   const [incomingRecommendations, setIncomingRecommendations] = useState<IncomingRecommendation[]>([]);
-  const [loadingActivity, setLoadingActivity] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const { toast } = useToast();
 
@@ -130,102 +120,6 @@ export default function DashboardPage() {
         }
       };
 
-      const fetchFriendActivity = async () => {
-        setLoadingActivity(true);
-        if (!user) {
-          setLoadingActivity(false);
-          return;
-        }
-        
-        try {
-          // 1. Get user tier to determine limit
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
-          const isStandardTier = userDoc.data()?.tier === 'standard';
-          const activityLimit = isStandardTier ? 5 : 10;
-          
-          // 2. Get the user's friends
-          const friendsRef = collection(db, 'users', user.uid, 'friends');
-          const friendsSnapshot = await getDocs(friendsRef);
-          const friends = friendsSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...(doc.data() as { displayName: string; photoURL?: string }),
-          }));
-
-          if (friends.length === 0) {
-            setFriendActivity([]);
-            setLoadingActivity(false);
-            return;
-          }
-
-          // 3. Fetch recent ratings for all friends
-          let allRatings: {
-            friend: { id: string; displayName: string; photoURL?: string };
-            movieId: string;
-            mediaType: 'movie' | 'tv';
-            rating: number;
-            watchedAt: Timestamp;
-          }[] = [];
-
-          for (const friend of friends) {
-            const ratingsRef = collection(db, 'users', friend.id, 'ratings');
-            // Simplified query to avoid composite index requirement
-            const q = query(
-              ratingsRef,
-              where('watched', '==', true),
-              orderBy('updatedAt', 'desc'),
-              limit(20) 
-            );
-            const ratingsSnapshot = await getDocs(q);
-
-            ratingsSnapshot.forEach((doc) => {
-              const data = doc.data();
-              // Filter in the code instead of in the query
-              if (data.isPrivate !== true) {
-                 allRatings.push({
-                    friend: { id: friend.id, displayName: friend.displayName, photoURL: friend.photoURL },
-                    movieId: doc.id,
-                    mediaType: data.mediaType || 'movie', // Default to movie for older records
-                    rating: data.rating || 0,
-                    watchedAt: data.updatedAt,
-                });
-              }
-            });
-          }
-
-          // 4. Sort all activities by date and take the latest based on tier
-          allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
-          const latestRatings = allRatings.slice(0, activityLimit);
-
-          // 5. Fetch movie details for the latest ratings
-          const activityWithMovieDetails = await Promise.all(
-            latestRatings.map(async (rating) => {
-              const movieDetails = await getMovieDetails({
-                id: parseInt(rating.movieId, 10),
-                mediaType: rating.mediaType,
-              });
-              return {
-                friend: rating.friend,
-                movie: movieDetails,
-                rating: rating.rating,
-                watchedAt: rating.watchedAt,
-              };
-            })
-          );
-          
-          // Filter out any movies that couldn't be found
-          const finalActivity = activityWithMovieDetails.filter(item => item.movie && item.movie.title !== 'Unknown Media');
-          
-          setFriendActivity(finalActivity as FriendActivityItem[]);
-
-        } catch (error) {
-          console.error("Error fetching friend activity: ", error);
-          setFriendActivity([]);
-        } finally {
-          setLoadingActivity(false);
-        }
-      }
-
       const fetchRecommendations = async () => {
         setLoadingRecs(true);
         if (!user) {
@@ -286,13 +180,11 @@ export default function DashboardPage() {
       getWatchedCount();
       getFriendCount();
       getRecommendationCount();
-      fetchFriendActivity();
       fetchRecommendations();
     } else {
       setWatchedCount(0);
       setFriendCount(0);
       setRecommendationCount(0);
-      setLoadingActivity(false);
       setLoadingRecs(false);
     }
   }, [user]);
@@ -449,80 +341,6 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
-
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-headline">Friend Activity</CardTitle>
-            <CardDescription>
-              See what your friends have been watching recently.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             {loadingActivity ? (
-                <div className="flex justify-center items-center h-40">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-             ) : !friendActivity || friendActivity.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                    <p>No friend activity yet.</p>
-                    <p className="text-sm">Once your friends watch movies, they'll show up here.</p>
-                </div>
-             ) : (
-                <div className="space-y-4">
-                  {friendActivity.map((item) => {
-                    const ratingInfo = getRatingInfo(item.rating);
-                    return (
-                        <div key={`${item.friend.id}-${item.movie.id}`} className="flex items-start gap-4">
-                        <Avatar className="h-10 w-10 border">
-                            <AvatarImage src={item.friend.photoURL} alt={item.friend.displayName} />
-                            <AvatarFallback>{item.friend.displayName?.charAt(0) ?? 'U'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                            <p className="text-sm text-muted-foreground">
-                            <span className="font-bold text-foreground">{item.friend.displayName}</span>
-                            {' '}watched{' '}
-                            <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`} className="block font-bold hover:underline">{item.movie.title}</Link>
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{formatDistanceToNow(item.watchedAt.toDate(), { addSuffix: true })}</span>
-                            {ratingInfo && (
-                                <>
-                                <span>&middot;</span>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div className="flex items-center gap-1 text-lg cursor-default">
-                                            {ratingInfo.emoji}
-                                        </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p className="font-bold">{ratingInfo.label}</p>
-                                        <p>{ratingInfo.description}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                </>
-                            )}
-                            </div>
-                        </div>
-                        <Link href={`/dashboard/movies/${item.movie.id}?type=${item.movie.mediaType}`}>
-                            <Image
-                                src={item.movie.imageUrl}
-                                alt={item.movie.title}
-                                data-ai-hint={item.movie.imageHint}
-                                width={40}
-                                height={60}
-                                className="rounded-sm object-cover aspect-[2/3]"
-                            />
-                        </Link>
-                        </div>
-                    )
-                  })}
-                </div>
-             )}
-          </CardContent>
-        </Card>
-      </div>
-
     </div>
     </TooltipProvider>
   );
