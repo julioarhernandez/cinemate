@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getRatingInfo } from '@/lib/ratings';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface UserMovieData {
   watched?: boolean;
@@ -46,6 +47,7 @@ function MoviesPageContent() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
+  const [hideWatched, setHideWatched] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -148,7 +150,7 @@ function MoviesPageContent() {
   }, [isFiltersOpen]);
   
   const moviesWithUserData = useMemo(() => {
-    return movies.map(movie => {
+    const moviesWithData = movies.map(movie => {
       const userData = userRatings[movie.id.toString()];
       return {
         ...movie,
@@ -157,7 +159,13 @@ function MoviesPageContent() {
         isPrivate: userData?.isPrivate,
       };
     });
-  }, [movies, userRatings]);
+    
+    if (hideWatched) {
+        return moviesWithData.filter(movie => !movie.watched);
+    }
+
+    return moviesWithData;
+  }, [movies, userRatings, hideWatched]);
 
   const showLoadingSpinner = loading && !isInitialized;
   const showInitialLoad = loading && isInitialized && movies.length === 0;
@@ -224,231 +232,237 @@ function MoviesPageContent() {
             )}
         </form>
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 justify-between">
-            <Collapsible ref={filtersRef} open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
-                <CollapsibleTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "w-full sm:w-auto",
-                        activeFilterCount > 0 && "border-primary text-primary"
-                      )}
-                    >
-                        <ListFilter className="mr-2 h-4 w-4" />
-                        Filters
-                        {activeFilterCount > 0 && (
-                           <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                            {activeFilterCount}
-                           </span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+            <div className="flex items-center gap-2">
+                <Collapsible ref={filtersRef} open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="w-full sm:w-auto">
+                    <CollapsibleTrigger asChild>
+                        <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                            "w-full sm:w-auto",
+                            activeFilterCount > 0 && "border-primary text-primary"
                         )}
-                    </Button>
-                </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
-                <div className="rounded-lg border p-4 bg-background w-[280px]">
-                    <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-sm font-semibold">Filters</h4>
-                        {activeFilterCount > 0 && (
-                            <Button variant="ghost" size="sm" onClick={resetFilters} className="-mr-2 h-auto p-1">
-                                Reset
-                            </Button>
-                        )}
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Release Year</Label>
-                            <Input placeholder="e.g., 2024" value={year} onChange={e => setYear(e.target.value)} />
+                        >
+                            <ListFilter className="mr-2 h-4 w-4" />
+                            Filters
+                            {activeFilterCount > 0 && (
+                            <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                                {activeFilterCount}
+                            </span>
+                            )}
+                        </Button>
+                    </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 sm:absolute sm:z-10 animate-in fade-in-0 zoom-in-95">
+                    <div className="rounded-lg border p-4 bg-background w-[280px]">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="text-sm font-semibold">Filters</h4>
+                            {activeFilterCount > 0 && (
+                                <Button variant="ghost" size="sm" onClick={resetFilters} className="-mr-2 h-auto p-1">
+                                    Reset
+                                </Button>
+                            )}
                         </div>
 
-                         <div className="space-y-2">
-                            <Label>Original Language</Label>
-                             <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={languagePopoverOpen}
-                                    className="w-full justify-between font-normal"
-                                    >
-                                    <span className="truncate">
-                                      {language
-                                          ? allLanguages.find((lang) => lang.iso_639_1 === language)?.english_name
-                                          : "Select language..."}
-                                    </span>
-                                    {language ? (
-                                      <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setLanguage('')}}/>
-                                    ) : (
-                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search language..." />
-                                        <CommandEmpty>No language found.</CommandEmpty>
-                                        <CommandGroup>
-                                            <ScrollArea className='h-40'>
-                                            {allLanguages.map((lang) => (
-                                                <CommandItem
-                                                  key={lang.iso_639_1}
-                                                  value={lang.english_name}
-                                                  onSelect={(currentValue) => {
-                                                    const selectedLang = allLanguages.find(l => l.english_name.toLowerCase() === currentValue.toLowerCase());
-                                                    if (selectedLang) {
-                                                      setLanguage(selectedLang.iso_639_1 === language ? "" : selectedLang.iso_639_1);
-                                                    }
-                                                    setLanguagePopoverOpen(false);
-                                                  }}
-                                                >
-                                                <Check
-                                                    className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    language === lang.iso_639_1 ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                {lang.english_name}
-                                                </CommandItem>
-                                            ))}
-                                            </ScrollArea>
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <Label>Origin Country</Label>
-                             <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={countryPopoverOpen}
-                                    className="w-full justify-between font-normal"
-                                    >
-                                    <span className="truncate">
-                                      {originCountry
-                                          ? allCountries.find((country) => country.iso_3166_1 === originCountry)?.english_name
-                                          : "Select country..."}
-                                    </span>
-                                    {originCountry ? (
-                                      <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setOriginCountry('')}}/>
-                                    ) : (
-                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[240px] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search country..." />
-                                        <CommandEmpty>No country found.</CommandEmpty>
-                                        <CommandGroup>
-                                            <ScrollArea className='h-40'>
-                                            {allCountries.map((country) => (
-                                                <CommandItem
-                                                  key={country.iso_3166_1}
-                                                  value={country.english_name}
-                                                  onSelect={(currentValue) => {
-                                                    const selectedCountry = allCountries.find(c => c.english_name.toLowerCase() === currentValue.toLowerCase());
-                                                    if (selectedCountry) {
-                                                      setOriginCountry(selectedCountry.iso_3166_1 === originCountry ? "" : selectedCountry.iso_3166_1);
-                                                    }
-                                                    setCountryPopoverOpen(false);
-                                                  }}
-                                                >
-                                                <Check
-                                                    className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    originCountry === country.iso_3166_1 ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                {country.english_name}
-                                                </CommandItem>
-                                            ))}
-                                            </ScrollArea>
-                                        </CommandGroup>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Release Year</Label>
+                                <Input placeholder="e.g., 2024" value={year} onChange={e => setYear(e.target.value)} />
+                            </div>
 
-
-                         <div className="space-y-2">
-                            <Label>Cast Member</Label>
-                            <Input placeholder="e.g., Tom Hanks" value={cast} onChange={e => setCast(e.target.value)} />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Genre</Label>
-                          <Popover>
-                              <PopoverTrigger asChild>
-                                  <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      className="w-full justify-between font-normal h-auto"
-                                  >
-                                    <div className="flex flex-wrap gap-1 items-center">
-                                      {selectedGenreNames.length > 0 ? (
-                                          selectedGenreNames.map(name => (
-                                              <Badge
-                                                  variant="secondary"
-                                                  key={name}
-                                                  className="rounded-sm"
-                                                  onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      const genreToUnselect = allGenres.find(g => g.name === name);
-                                                      if (genreToUnselect) {
-                                                          handleGenreSelect(genreToUnselect.id.toString());
-                                                      }
-                                                  }}
-                                              >
-                                                  {name}
-                                                  <X className="ml-1 h-3 w-3" />
-                                              </Badge>
-                                          ))
-                                      ) : (
-                                          <span className="text-muted-foreground">Select genres...</span>
-                                      )}
-                                    </div>
-                                  </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[240px] p-0" align="start">
-                                  <Command>
-                                      <CommandInput placeholder="Search genres..." />
-                                      <CommandList>
-                                        <CommandEmpty>No genre found.</CommandEmpty>
-                                        <CommandGroup>
-                                          <ScrollArea className="h-40">
-                                            {allGenres.map((genre) => {
-                                                const isSelected = selectedGenres.includes(genre.id.toString());
-                                                return (
+                            <div className="space-y-2">
+                                <Label>Original Language</Label>
+                                <Popover open={languagePopoverOpen} onOpenChange={setLanguagePopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={languagePopoverOpen}
+                                        className="w-full justify-between font-normal"
+                                        >
+                                        <span className="truncate">
+                                        {language
+                                            ? allLanguages.find((lang) => lang.iso_639_1 === language)?.english_name
+                                            : "Select language..."}
+                                        </span>
+                                        {language ? (
+                                        <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setLanguage('')}}/>
+                                        ) : (
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[240px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search language..." />
+                                            <CommandEmpty>No language found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <ScrollArea className='h-40'>
+                                                {allLanguages.map((lang) => (
                                                     <CommandItem
-                                                        key={genre.id}
-                                                        value={genre.name}
-                                                        onSelect={() => handleGenreSelect(genre.id.toString())}
+                                                    key={lang.iso_639_1}
+                                                    value={lang.english_name}
+                                                    onSelect={(currentValue) => {
+                                                        const selectedLang = allLanguages.find(l => l.english_name.toLowerCase() === currentValue.toLowerCase());
+                                                        if (selectedLang) {
+                                                        setLanguage(selectedLang.iso_639_1 === language ? "" : selectedLang.iso_639_1);
+                                                        }
+                                                        setLanguagePopoverOpen(false);
+                                                    }}
                                                     >
-                                                        <Check
-                                                            className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                isSelected ? "opacity-100" : "opacity-0"
-                                                            )}
-                                                        />
-                                                        {genre.name}
+                                                    <Check
+                                                        className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        language === lang.iso_639_1 ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {lang.english_name}
                                                     </CommandItem>
-                                                );
-                                            })}
-                                          </ScrollArea>
-                                        </CommandGroup>
-                                      </CommandList>
-                                  </Command>
-                              </PopoverContent>
-                          </Popover>
-                      </div>
+                                                ))}
+                                                </ScrollArea>
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <Label>Origin Country</Label>
+                                <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={countryPopoverOpen}
+                                        className="w-full justify-between font-normal"
+                                        >
+                                        <span className="truncate">
+                                        {originCountry
+                                            ? allCountries.find((country) => country.iso_3166_1 === originCountry)?.english_name
+                                            : "Select country..."}
+                                        </span>
+                                        {originCountry ? (
+                                        <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setOriginCountry('')}}/>
+                                        ) : (
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[240px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search country..." />
+                                            <CommandEmpty>No country found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <ScrollArea className='h-40'>
+                                                {allCountries.map((country) => (
+                                                    <CommandItem
+                                                    key={country.iso_3166_1}
+                                                    value={country.english_name}
+                                                    onSelect={(currentValue) => {
+                                                        const selectedCountry = allCountries.find(c => c.english_name.toLowerCase() === currentValue.toLowerCase());
+                                                        if (selectedCountry) {
+                                                        setOriginCountry(selectedCountry.iso_3166_1 === originCountry ? "" : selectedCountry.iso_3166_1);
+                                                        }
+                                                        setCountryPopoverOpen(false);
+                                                    }}
+                                                    >
+                                                    <Check
+                                                        className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        originCountry === country.iso_3166_1 ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {country.english_name}
+                                                    </CommandItem>
+                                                ))}
+                                                </ScrollArea>
+                                            </CommandGroup>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+
+                            <div className="space-y-2">
+                                <Label>Cast Member</Label>
+                                <Input placeholder="e.g., Tom Hanks" value={cast} onChange={e => setCast(e.target.value)} />
+                            </div>
+
+                            <div className="space-y-2">
+                            <Label>Genre</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className="w-full justify-between font-normal h-auto"
+                                    >
+                                        <div className="flex flex-wrap gap-1 items-center">
+                                        {selectedGenreNames.length > 0 ? (
+                                            selectedGenreNames.map(name => (
+                                                <Badge
+                                                    variant="secondary"
+                                                    key={name}
+                                                    className="rounded-sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const genreToUnselect = allGenres.find(g => g.name === name);
+                                                        if (genreToUnselect) {
+                                                            handleGenreSelect(genreToUnselect.id.toString());
+                                                        }
+                                                    }}
+                                                >
+                                                    {name}
+                                                    <X className="ml-1 h-3 w-3" />
+                                                </Badge>
+                                            ))
+                                        ) : (
+                                            <span className="text-muted-foreground">Select genres...</span>
+                                        )}
+                                        </div>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[240px] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="Search genres..." />
+                                        <CommandList>
+                                            <CommandEmpty>No genre found.</CommandEmpty>
+                                            <CommandGroup>
+                                            <ScrollArea className="h-40">
+                                                {allGenres.map((genre) => {
+                                                    const isSelected = selectedGenres.includes(genre.id.toString());
+                                                    return (
+                                                        <CommandItem
+                                                            key={genre.id}
+                                                            value={genre.name}
+                                                            onSelect={() => handleGenreSelect(genre.id.toString())}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    isSelected ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            {genre.name}
+                                                        </CommandItem>
+                                                    );
+                                                })}
+                                            </ScrollArea>
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        </div>
                     </div>
+                </CollapsibleContent>
+                </Collapsible>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="hide-watched" checked={hideWatched} onCheckedChange={(checked) => setHideWatched(checked as boolean)} />
+                    <Label htmlFor="hide-watched" className="font-normal">Hide Watched</Label>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+            </div>
              <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Sort by" />
@@ -573,3 +587,5 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
+
+    
