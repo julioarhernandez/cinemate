@@ -216,14 +216,25 @@ export default function DashboardPage() {
   return (
     <TooltipProvider>
     <div className="space-y-8">
-      <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Welcome back, {user?.displayName?.split(' ')[0] || 'there'}!
-        </h1>
-        <p className="text-muted-foreground">
-          Here's a quick look at your MovieCircles world.
-        </p>
-      </div>
+      <Card className="relative flex min-h-[200px] flex-col justify-end overflow-hidden rounded-xl p-6">
+        <Image
+          src="https://picsum.photos/seed/dashboard/1200/400"
+          alt="Abstract cinema background"
+          data-ai-hint="abstract cinema"
+          fill
+          className="absolute inset-0 -z-10 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="text-white">
+            <h1 className="font-headline text-4xl font-bold tracking-tight text-white">
+            Welcome back, {user?.displayName?.split(' ')[0] || 'there'}!
+            </h1>
+            <p className="mt-2 text-lg text-white/80">
+            Here's a quick look at your MovieCircles world.
+            </p>
+        </div>
+      </Card>
+
 
       <div className="grid gap-6 lg:grid-cols-2">
          <Card>
@@ -265,7 +276,7 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                    {incomingRecommendations.slice(0, 3).map((item) => {
+                    {incomingRecommendations.slice(0, 2).map((item) => {
                         const ratingInfo = getRatingInfo(item.fromRating);
                         return (
                         <div key={item.id} className="flex items-start gap-4">
