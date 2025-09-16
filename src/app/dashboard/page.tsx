@@ -457,15 +457,13 @@ export default function DashboardPage() {
                         <div className="text-xs text-muted-foreground mt-1 mb-2">
                             <span>{formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true })}</span>
                         </div>
-                        <div className="text-sm flex items-center gap-2 mb-2">
+                        <div className="text-sm flex items-center gap-2 mb-3">
                            <Avatar className="h-6 w-6">
                               <AvatarImage src={item.from.photoURL} alt={item.from.name} />
                               <AvatarFallback>{item.from.name?.charAt(0) ?? 'U'}</AvatarFallback>
                            </Avatar>
                            <p>From <span className="font-semibold">{item.from.name}</span></p>
                         </div>
-                      </div>
-                      <div>
                         <Button size="sm" variant="outline" onClick={() => handleSaveToWatchlistAndDismiss(item)}>
                             <Bookmark className="mr-2 h-4 w-4" /> Save to Watchlist
                         </Button>
