@@ -368,6 +368,19 @@ export default function CollectionsPage() {
       toast({ variant: 'destructive', title: 'Could not delete recommendation.' });
     }
   };
+  
+  const handleDeleteSentRecommendation = async (recommendationId: string) => {
+    if (!user) return;
+    try {
+      const recDocRef = doc(db, 'users', user.uid, 'sentRecommendations', recommendationId);
+      await deleteDoc(recDocRef);
+      setUserRecommendations(prev => prev.filter(r => r.id !== recommendationId));
+      toast({ title: 'Removed recommendation from your history.' });
+    } catch (error) {
+      console.error('Failed to delete sent recommendation:', error);
+      toast({ variant: 'destructive', title: 'Could not remove recommendation.' });
+    }
+  };
 
 
   useEffect(() => {
@@ -720,6 +733,30 @@ export default function CollectionsPage() {
                                         </div>
                                     </div>
                                 </div>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="sm">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Remove
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove from History?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will remove this item from your recommendation history. It will not un-send the recommendation to your friend(s).
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => handleDeleteSentRecommendation(item.id)}
+                                            className="bg-destructive hover:bg-destructive/90"
+                                        >
+                                            Remove
+                                        </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </Card>
                     ))}
@@ -820,3 +857,4 @@ export default function CollectionsPage() {
     </TooltipProvider>
   );
 }
+
