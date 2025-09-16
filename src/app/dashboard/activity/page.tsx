@@ -43,13 +43,6 @@ interface FriendActivityItem {
   notes?: string;
 }
 
-interface CachedActivity {
-    data: FriendActivityItem[];
-    timestamp: number;
-}
-
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
-
 export default function ActivityPage() {
   const [user, authLoading] = useAuthState(auth);
   const [activity, setActivity] = useState<FriendActivityItem[]>([]);
@@ -57,62 +50,60 @@ export default function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
-  const [cachedActivity, setCachedActivity] = useState<CachedActivity | null>(null);
-
   // Filter states
   const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
   const [ratingRange, setRatingRange] = useState<[number, number]>([1, 5]);
   const [timeRange, setTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
-  const fetchFriendsAndActivity = useCallback(async () => {
+  // Staged filter states for form submission
+  const [stagedSelectedFriends, setStagedSelectedFriends] = useState<string[]>([]);
+  const [stagedRatingRange, setStagedRatingRange] = useState<[number, number]>([1, 5]);
+  const [stagedTimeRange, setStagedTimeRange] = useState<'all' | 'week' | 'month' | 'year'>('all');
+
+  const fetchFriends = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
     }
-
-    const now = new Date().getTime();
-    if (cachedActivity && (now - cachedActivity.timestamp < CACHE_DURATION)) {
-        setActivity(cachedActivity.data);
-        setLoading(false);
-        return;
-    }
-
-
     setLoading(true);
-
     try {
-      // 0. Check user tier
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const userData = userDoc.data();
-      const isStandardTier = userData?.tier === 'standard';
-      const activityLimit = isStandardTier ? 5 : 20;
-
-
-      // 1. Get the user's friends list if we don't have it
-      let fetchedFriends = friends;
-      if (friends.length === 0) {
         const friendsRef = collection(db, 'users', user.uid, 'friends');
         const friendsSnapshot = await getDocs(friendsRef);
-        fetchedFriends = friendsSnapshot.docs.map((doc) => ({
+        const fetchedFriends = friendsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...(doc.data() as { displayName: string; photoURL?: string }),
         }));
         setFriends(fetchedFriends);
-      }
+    } catch (error) {
+        console.error("Failed to fetch friends:", error);
+        toast({ variant: 'destructive', title: 'Could not load friends list.' });
+    } finally {
+        setLoading(false);
+    }
+  }, [user, toast]);
 
-      let friendsToQuery = fetchedFriends;
-      if (selectedFriends.length > 0) {
-        friendsToQuery = fetchedFriends.filter(f => selectedFriends.includes(f.id));
-      }
+  useEffect(() => {
+    fetchFriends();
+  }, [fetchFriends]);
 
-      if (friendsToQuery.length === 0 && selectedFriends.length > 0) {
+  const fetchActivity = useCallback(async () => {
+    if (!user || selectedFriends.length === 0) {
+      setActivity([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const friendsToQuery = friends.filter(f => selectedFriends.includes(f.id));
+
+      if (friendsToQuery.length === 0) {
         setActivity([]);
         setLoading(false);
         return;
       }
 
-      // 2. Fetch recent ratings for all friends in parallel
       let allRatings: {
         friend: User;
         movieId: string;
@@ -124,17 +115,16 @@ export default function ActivityPage() {
 
       const ratingQueries = friendsToQuery.map(async (friend) => {
         const ratingsRef = collection(db, 'users', friend.id, 'ratings');
-        // Simplified query to avoid needing a composite index
-        const q = query(
+        let q = query(
           ratingsRef,
           where('watched', '==', true),
           orderBy('updatedAt', 'desc'),
-          limit(20)
+          limit(10)
         );
+        
         const snapshot = await getDocs(q);
         snapshot.forEach((doc) => {
           const data = doc.data();
-          // Filter for public ratings on the client side
           if (data.isPrivate !== true) {
             allRatings.push({
               friend,
@@ -149,14 +139,11 @@ export default function ActivityPage() {
       });
 
       await Promise.all(ratingQueries);
-
-      // 3. Sort all activities by date and take the most recent ones based on tier.
+      
       allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
-      const latestRatings = allRatings.slice(0, activityLimit);
-
-      // 4. Fetch movie details for the latest ratings.
+      
       const activityWithMovieDetails = await Promise.all(
-        latestRatings.map(async (rating) => {
+        allRatings.map(async (rating) => {
           const movieDetails = await getMovieDetails({
             id: parseInt(rating.movieId, 10),
             mediaType: rating.mediaType,
@@ -176,7 +163,6 @@ export default function ActivityPage() {
       
       const finalActivity = activityWithMovieDetails.filter((item): item is FriendActivityItem => item !== null);
       setActivity(finalActivity);
-      setCachedActivity({ data: finalActivity, timestamp: new Date().getTime() });
 
     } catch (error) {
       console.error("Failed to fetch activity:", error);
@@ -185,13 +171,21 @@ export default function ActivityPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, selectedFriends, toast, friends, cachedActivity]);
+  }, [user, friends, selectedFriends, toast]);
+  
+  const handleApplyFilters = () => {
+    setSelectedFriends(stagedSelectedFriends);
+    setRatingRange(stagedRatingRange);
+    setTimeRange(stagedTimeRange);
+  };
 
   useEffect(() => {
-    if (user) {
-      fetchFriendsAndActivity();
+    if (selectedFriends.length > 0) {
+      fetchActivity();
+    } else {
+      setActivity([]);
     }
-  }, [user, selectedFriends, fetchFriendsAndActivity]);
+  }, [selectedFriends, fetchActivity]);
 
 
   const filteredActivity = useMemo(() => {
@@ -221,7 +215,7 @@ export default function ActivityPage() {
   }, [activity, ratingRange, timeRange]);
 
   const handleFriendSelect = (friendId: string) => {
-    setSelectedFriends(prev => {
+    setStagedSelectedFriends(prev => {
         if (prev.includes(friendId)) {
             return prev.filter(id => id !== friendId);
         } else {
@@ -244,8 +238,8 @@ export default function ActivityPage() {
 
       <Card>
         <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                 <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                 <div className="space-y-2 md:col-span-1">
                     <Label htmlFor="friend-filter">Friend</Label>
                      <Popover>
                         <PopoverTrigger asChild>
@@ -255,12 +249,12 @@ export default function ActivityPage() {
                                 className="w-full justify-between"
                             >
                                 <span className="truncate">
-                                    {selectedFriends.length === 0 && 'All Friends'}
-                                    {selectedFriends.length === 1 && friends.find(f => f.id === selectedFriends[0])?.displayName}
-                                    {selectedFriends.length > 1 && `${selectedFriends.length} friends selected`}
+                                    {stagedSelectedFriends.length === 0 && 'Select friends...'}
+                                    {stagedSelectedFriends.length === 1 && friends.find(f => f.id === stagedSelectedFriends[0])?.displayName}
+                                    {stagedSelectedFriends.length > 1 && `${stagedSelectedFriends.length} friends selected`}
                                 </span>
-                                {selectedFriends.length > 0 && (
-                                    <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setSelectedFriends([])}}/>
+                                {stagedSelectedFriends.length > 0 && (
+                                    <X className="ml-2 h-4 w-4 shrink-0 opacity-50" onClick={(e) => { e.stopPropagation(); setStagedSelectedFriends([])}}/>
                                 )}
                             </Button>
                         </PopoverTrigger>
@@ -271,7 +265,7 @@ export default function ActivityPage() {
                                 <div key={friend.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent" onClick={() => handleFriendSelect(friend.id)}>
                                     <Checkbox
                                         id={`friend-${friend.id}`}
-                                        checked={selectedFriends.includes(friend.id)}
+                                        checked={stagedSelectedFriends.includes(friend.id)}
                                         onCheckedChange={() => handleFriendSelect(friend.id)}
                                     />
                                     <Label htmlFor={`friend-${friend.id}`} className="font-normal flex-1 cursor-pointer">{friend.displayName}</Label>
@@ -282,13 +276,13 @@ export default function ActivityPage() {
                         </PopoverContent>
                     </Popover>
                 </div>
-                 <div className="space-y-2">
-                    <Label>Rating: {getRatingInfo(ratingRange[0])?.emoji} to {getRatingInfo(ratingRange[1])?.emoji}</Label>
-                    <Slider value={ratingRange} onValueChange={(value) => setRatingRange(value as [number, number])} min={1} max={5} step={1} />
+                 <div className="space-y-2 md:col-span-1">
+                    <Label>Rating: {getRatingInfo(stagedRatingRange[0])?.emoji} to {getRatingInfo(stagedRatingRange[1])?.emoji}</Label>
+                    <Slider value={stagedRatingRange} onValueChange={(value) => setStagedRatingRange(value as [number, number])} min={1} max={5} step={1} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 md:col-span-1">
                     <Label htmlFor="time-range-filter">Time Range</Label>
-                     <Select value={timeRange} onValueChange={(value) => setTimeRange(value as any)}>
+                     <Select value={stagedTimeRange} onValueChange={(value) => setStagedTimeRange(value as any)}>
                         <SelectTrigger id="time-range-filter">
                             <SelectValue placeholder="Select a time range" />
                         </SelectTrigger>
@@ -299,6 +293,12 @@ export default function ActivityPage() {
                             <SelectItem value="year">Past Year</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+                <div className="md:col-span-1">
+                  <Button onClick={handleApplyFilters} className="w-full" disabled={stagedSelectedFriends.length === 0}>
+                    <Search className="mr-2 h-4 w-4" />
+                    Apply Filters
+                  </Button>
                 </div>
             </div>
         </CardContent>
@@ -312,7 +312,7 @@ export default function ActivityPage() {
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">No Activity Found</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              No friend activity matches your filters. Or maybe it's time to make some friends!
+              {selectedFriends.length === 0 ? "Select a friend and apply filters to see their activity." : "No friend activity matches your filters. Or maybe it's time to make some friends!"}
             </p>
              <Button asChild className="mt-4">
               <Link href="/dashboard/friends">Manage Friends</Link>
@@ -376,3 +376,5 @@ export default function ActivityPage() {
     </TooltipProvider>
   );
 }
+
+    
