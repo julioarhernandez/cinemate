@@ -63,6 +63,14 @@ export default function ActivityPage() {
     setLoading(true);
 
     try {
+      // 0. Check user tier
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.data();
+      const isStandardTier = userData?.tier === 'standard';
+      const activityLimit = isStandardTier ? 5 : 20;
+
+
       // 1. Get the user's friends list if we don't have it
       let fetchedFriends = friends;
       if (friends.length === 0) {
@@ -124,9 +132,9 @@ export default function ActivityPage() {
 
       await Promise.all(ratingQueries);
 
-      // 3. Sort all activities by date and take the most recent ones.
+      // 3. Sort all activities by date and take the most recent ones based on tier.
       allRatings.sort((a, b) => b.watchedAt.toMillis() - a.watchedAt.toMillis());
-      const latestRatings = allRatings.slice(0, 20);
+      const latestRatings = allRatings.slice(0, activityLimit);
 
       // 4. Fetch movie details for the latest ratings.
       const activityWithMovieDetails = await Promise.all(

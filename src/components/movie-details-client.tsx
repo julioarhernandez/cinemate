@@ -2,14 +2,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { EyeOff, Star, Bookmark, Share2, PlayCircle, MonitorPlay } from 'lucide-react';
+import { EyeOff, Star, Bookmark, Share2, PlayCircle, MonitorPlay, Gem } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getCountFromServer } from 'firebase/firestore';
 import type { MovieDetailsOutput } from '@/ai/flows/get-movie-details';
 import { Skeleton } from './ui/skeleton';
 import { RecommendDialog } from './recommend-dialog';
@@ -18,6 +18,8 @@ import { Separator } from './ui/separator';
 import { RATING_SCALE, getRatingInfo } from '@/lib/ratings';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+
 
 const EmojiRatingInput = ({
   rating,
@@ -65,6 +67,7 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isRecommendDialogOpen, setIsRecommendDialogOpen] = useState(false);
   const [isTrailerDialogOpen, setIsTrailerDialogOpen] = useState(false);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -171,9 +174,11 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   };
 
   const handleWatchlistToggle = async () => {
+    if (!user) return; // Should be handled by parent logic, but good practice
     const newWatchlistState = !inWatchlist;
+
     // Cannot be in watchlist if already watched
-    if (watched) {
+    if (watched && newWatchlistState) {
          toast({
             variant: 'destructive',
             title: 'Already Watched',
@@ -181,6 +186,25 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
         });
         return;
     }
+    
+    // If adding to watchlist, check tier and current count
+    if (newWatchlistState) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        const userData = userDoc.data();
+        
+        if (userData?.tier === 'standard') {
+            const watchlistQuery = query(collection(db, 'users', user.uid, 'ratings'), where('watchlist', '==', true));
+            const watchlistSnapshot = await getCountFromServer(watchlistQuery);
+            const watchlistCount = watchlistSnapshot.data().count;
+
+            if (watchlistCount >= 10) {
+                setShowLimitAlert(true);
+                return;
+            }
+        }
+    }
+
     setInWatchlist(newWatchlistState);
     const success = await handleSave({ watchlist: newWatchlistState });
     if (success) {
@@ -212,6 +236,23 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
 
   return (
     <>
+    <AlertDialog open={showLimitAlert} onOpenChange={setShowLimitAlert}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Gem className="text-amber-500" /> Watchlist Limit Reached
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            Your watchlist is full. Standard plan users can save up to 10 items. Please upgrade your plan to add more.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction>Upgrade Plan</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <RecommendDialog 
         open={isRecommendDialogOpen}
         onOpenChange={setIsRecommendDialogOpen}
@@ -264,7 +305,6 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
             <Button
                 onClick={handleWatchlistToggle}
                 variant={inWatchlist ? "secondary" : "outline"}
-                disabled={watched}
             >
                 <Bookmark className={`mr-2 h-4 w-4 ${inWatchlist ? "fill-primary" : ""}`} />
                 {inWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
