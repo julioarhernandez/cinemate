@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { EyeOff, Star, Bookmark, Share2, PlayCircle, MonitorPlay, Gem } from 'lucide-react';
+import { EyeOff, Star, Bookmark, Share2, PlayCircle, MonitorPlay, Gem, Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { RATING_SCALE, getRatingInfo } from '@/lib/ratings';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import { useCheckout } from '@/hooks/use-checkout';
 
 
 const EmojiRatingInput = ({
@@ -69,6 +70,8 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
   const [isTrailerDialogOpen, setIsTrailerDialogOpen] = useState(false);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const { toast } = useToast();
+  const { loading: checkoutLoading, handleCheckout } = useCheckout();
+
 
   useEffect(() => {
     async function fetchUserData() {
@@ -248,7 +251,14 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction>Upgrade Plan</AlertDialogAction>
+          <AlertDialogAction onClick={handleCheckout} disabled={checkoutLoading}>
+            {checkoutLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <Gem className="mr-2 h-4 w-4" />
+            )}
+            Upgrade Plan
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -338,4 +348,3 @@ export function MovieDetailsClient({ movieDetails, movieId }: { movieDetails: Mo
     </>
   );
 }
-

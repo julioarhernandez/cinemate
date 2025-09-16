@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Bot, Loader2, Sparkles, Library, Bookmark } from 'lucide-react';
+import { Bot, Loader2, Sparkles, Library, Bookmark, Gem } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import Link from 'next/link';
 
@@ -31,6 +31,7 @@ import { auth, db } from '@/lib/firebase';
 import { MovieSelectionDialog } from './movie-selection-dialog';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
+import { useCheckout } from '@/hooks/use-checkout';
 
 
 const formSchema = z.object({
@@ -54,6 +55,8 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
   const [result, setResult] = useState<RecommendMovieOutput | null>(null);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
   const { toast } = useToast();
+  const { loading: checkoutLoading, handleCheckout } = useCheckout();
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -183,7 +186,14 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction>Upgrade Now</AlertDialogAction>
+            <AlertDialogAction onClick={handleCheckout} disabled={checkoutLoading}>
+                {checkoutLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Gem className="mr-2 h-4 w-4" />
+                )}
+                Upgrade Now
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

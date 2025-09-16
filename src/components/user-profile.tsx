@@ -4,9 +4,10 @@
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useRouter } from 'next/navigation';
-import { LogOut, Gem } from 'lucide-react';
+import { LogOut, Gem, Loader2 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useCheckout } from '@/hooks/use-checkout';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,14 +16,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from './ui/skeleton';
 
 export function UserProfile() {
-  const [user, loading] = useAuthState(auth);
+  const [user, loadingAuth] = useAuthState(auth);
   const [userTier, setUserTier] = useState<string | null>(null);
   const router = useRouter();
+  const { loading: checkoutLoading, handleCheckout } = useCheckout();
 
   useEffect(() => {
     async function fetchUserTier() {
@@ -35,17 +38,17 @@ export function UserProfile() {
       }
     }
 
-    if (!loading) {
+    if (!loadingAuth) {
       fetchUserTier();
     }
-  }, [user, loading]);
+  }, [user, loadingAuth]);
 
   const handleSignOut = async () => {
     await auth.signOut();
     router.push('/');
   };
 
-  if (loading) {
+  if (loadingAuth) {
     return (
         <Skeleton className="h-8 w-8 rounded-full" />
     );
@@ -84,12 +87,24 @@ export function UserProfile() {
           </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-             <div className="flex items-center">
-               <Gem className="mr-2 h-4 w-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{capitalize(userTier) ?? 'Loading...'} Plan</span>
-             </div>
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem disabled>
+              <div className="flex items-center">
+                <Gem className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{capitalize(userTier) ?? 'Loading...'} Plan</span>
+              </div>
+          </DropdownMenuItem>
+          {userTier === 'standard' && (
+            <DropdownMenuItem onClick={handleCheckout} disabled={checkoutLoading}>
+                {checkoutLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Gem className="mr-2 h-4 w-4 text-amber-500" />
+                )}
+                <span>Upgrade to Pro</span>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
