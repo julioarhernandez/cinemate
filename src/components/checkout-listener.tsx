@@ -29,7 +29,7 @@ export function CheckoutListener() {
           
           toast({
             title: "Upgrade Successful!",
-            description: "Welcome to the Pro plan! Your new features are now available.",
+            description: `Welcome to the Pro plan! UID: ${user.uid}, Email: ${user.email}`,
           });
           
           // Clean up the URL
