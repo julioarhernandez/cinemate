@@ -19,36 +19,36 @@ export function CheckoutListener() {
       const sessionId = searchParams.get('session_id');
       console.log(`[CheckoutListener] Detected session_id: ${sessionId} for user: ${user.uid}`);
 
-      // Use onSnapshot to listen for the document to be updated by the Stripe extension
       const sessionDocRef = doc(db, 'customers', user.uid, 'checkout_sessions', sessionId!);
       console.log(`[CheckoutListener] Attaching snapshot listener to: ${sessionDocRef.path}`);
       
       const unsubscribe = onSnapshot(sessionDocRef, async (snap) => {
         console.log('[CheckoutListener] Snapshot listener fired.');
+        
+        if (!snap.exists()) {
+            console.log('[CheckoutListener] Document does not exist yet. Waiting for Stripe webhook...');
+            return; // Wait for the next snapshot
+        }
+
         const data = snap.data();
         console.log('[CheckoutListener] Snapshot data:', data);
 
         const error = data?.error;
         const url = data?.url;
 
-        // The Stripe extension has updated the document with an error
         if (error) {
           console.log('[CheckoutListener] Detected error in session document:', error.message);
-          unsubscribe(); // Stop listening
+          unsubscribe();
           toast({
             variant: "destructive",
             title: "Checkout Error",
             description: error.message,
           });
           console.error("Stripe Checkout Error:", error.message);
-           // Clean up the URL
           router.replace('/dashboard');
-        }
-        
-        // The Stripe extension has successfully updated the document with a URL
-        if (snap.exists() && url && !error) {
+        } else if (url) {
             console.log('[CheckoutListener] Session confirmed with URL. Preparing to update user tier.');
-            unsubscribe(); // Stop listening, we have what we need.
+            unsubscribe();
             
             const userDocRef = doc(db, 'users', user.uid);
             console.log(`[CheckoutListener] Attempting to update tier to 'pro' for user ID: ${user.uid}`);
@@ -71,12 +71,11 @@ export function CheckoutListener() {
                     description: "Your payment was successful, but we failed to update your account. Please contact support.",
                 });
             } finally {
-                // Clean up the URL by removing the session_id query parameter
                 console.log('[CheckoutListener] Cleaning up URL.');
                 router.replace('/dashboard');
             }
         } else {
-            console.log('[CheckoutListener] Document exists but URL is not yet present. Waiting for next snapshot.');
+             console.log('[CheckoutListener] Document exists, but `url` is not yet present. Waiting for next snapshot.');
         }
       }, (err) => {
           console.error("[CheckoutListener] Snapshot listener error:", err);
@@ -92,5 +91,5 @@ export function CheckoutListener() {
     }
   }, [searchParams, user, toast, router]);
 
-  return null; // This component does not render anything
+  return null;
 }
