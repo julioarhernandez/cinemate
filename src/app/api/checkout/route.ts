@@ -1,3 +1,4 @@
+
 // app/api/checkout/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { doc, collection, addDoc } from 'firebase/firestore';
@@ -10,11 +11,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Request body:', body);
     
-    const { priceId, uid, successUrl, cancelUrl } = body;
+    const { uid, successUrl, cancelUrl } = body;
+    const priceId = process.env.STRIPE_PRICE_ID;
 
-    // Validate priceId from client (it should be sent from client)
+    // Validate priceId from server environment
     if (!priceId || priceId === 'your_stripe_price_id_here') {
-      console.error('Stripe Price ID not provided or not configured');
+      console.error('Stripe Price ID not provided or not configured on the server.');
       return NextResponse.json(
         { error: 'Stripe Price ID is not configured.' },
         { status: 500 }
@@ -43,7 +45,6 @@ export async function POST(request: NextRequest) {
         price: priceId,
         success_url: successUrl,
         cancel_url: cancelUrl,
-        created: new Date(),
       }
     );
 
