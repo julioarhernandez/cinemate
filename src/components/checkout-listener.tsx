@@ -17,17 +17,23 @@ export function CheckoutListener() {
   useEffect(() => {
     if (searchParams.has('session_id') && user) {
       const sessionId = searchParams.get('session_id');
+      console.log(`[CheckoutListener] Detected session_id: ${sessionId} for user: ${user.uid}`);
 
       // Use onSnapshot to listen for the document to be updated by the Stripe extension
       const sessionDocRef = doc(db, 'customers', user.uid, 'checkout_sessions', sessionId!);
+      console.log(`[CheckoutListener] Attaching snapshot listener to: ${sessionDocRef.path}`);
       
       const unsubscribe = onSnapshot(sessionDocRef, async (snap) => {
+        console.log('[CheckoutListener] Snapshot listener fired.');
         const data = snap.data();
+        console.log('[CheckoutListener] Snapshot data:', data);
+
         const error = data?.error;
         const url = data?.url;
 
         // The Stripe extension has updated the document with an error
         if (error) {
+          console.log('[CheckoutListener] Detected error in session document:', error.message);
           unsubscribe(); // Stop listening
           toast({
             variant: "destructive",
@@ -40,22 +46,25 @@ export function CheckoutListener() {
         }
         
         // The Stripe extension has successfully updated the document with a URL
-        if (snap.exists() && !error) {
+        if (snap.exists() && url && !error) {
+            console.log('[CheckoutListener] Session confirmed with URL. Preparing to update user tier.');
             unsubscribe(); // Stop listening, we have what we need.
             
             const userDocRef = doc(db, 'users', user.uid);
+            console.log(`[CheckoutListener] Attempting to update tier to 'pro' for user ID: ${user.uid}`);
             
             try {
                 await updateDoc(userDocRef, {
                     tier: 'pro'
                 });
                 
+                console.log('[CheckoutListener] Successfully updated user tier in Firestore.');
                 toast({
                     title: "Upgrade Successful!",
                     description: `Welcome to the Pro plan! UID: ${user.uid}, Email: ${user.email}`,
                 });
             } catch (updateError) {
-                console.error("Failed to update user tier:", updateError);
+                console.error("[CheckoutListener] Failed to update user tier:", updateError);
                 toast({
                     variant: "destructive",
                     title: "Update Failed",
@@ -63,17 +72,23 @@ export function CheckoutListener() {
                 });
             } finally {
                 // Clean up the URL by removing the session_id query parameter
+                console.log('[CheckoutListener] Cleaning up URL.');
                 router.replace('/dashboard');
             }
+        } else {
+            console.log('[CheckoutListener] Document exists but URL is not yet present. Waiting for next snapshot.');
         }
       }, (err) => {
-          console.error("Snapshot listener error:", err);
+          console.error("[CheckoutListener] Snapshot listener error:", err);
           unsubscribe();
           router.replace('/dashboard');
       });
 
       // Cleanup listener on component unmount
-      return () => unsubscribe();
+      return () => {
+        console.log('[CheckoutListener] Cleaning up snapshot listener.');
+        unsubscribe();
+      };
     }
   }, [searchParams, user, toast, router]);
 
