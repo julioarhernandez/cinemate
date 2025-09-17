@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Creating checkout session for user:', uid, 'with price:', priceId);
 
-    // Create checkout session document
+    // Create checkout session document at the correct nested path
     const checkoutSessionRef = await addDoc(
       collection(db, 'customers', uid, 'checkout_sessions'),
       {
