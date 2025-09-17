@@ -6,7 +6,6 @@ import { SidebarProvider, Sidebar, SidebarTrigger } from '@/components/ui/sideba
 import { DashboardNav } from '@/components/dashboard-nav';
 import { UserProfile } from '@/components/user-profile';
 import { DashboardProvider } from '@/components/dashboard-provider';
-import { CheckoutListener } from '@/components/checkout-listener';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -21,7 +20,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <UserProfile />
           </header>
           <main className="p-4 sm:p-6 lg:p-8">
-            <CheckoutListener />
             <DashboardProvider>
                 {children}
             </DashboardProvider>
