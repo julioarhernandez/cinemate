@@ -21,8 +21,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <UserProfile />
           </header>
           <main className="p-4 sm:p-6 lg:p-8">
+            <CheckoutListener />
             <DashboardProvider>
-                <CheckoutListener />
                 {children}
             </DashboardProvider>
           </main>
