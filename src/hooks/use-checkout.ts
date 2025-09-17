@@ -23,7 +23,7 @@ export function useCheckout() {
         setLoading(true);
 
         try {
-            const successUrl = `${window.location.origin}/?checkout_success=true&session_id={CHECKOUT_SESSION_ID}`;
+            const successUrl = `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`;
             const cancelUrl = window.location.href;
 
             // Call the API route to create the checkout session

@@ -2,8 +2,7 @@
 "use client";
 
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,19 +18,8 @@ import { Logo } from '@/components/logo';
 
 export function LoginPageClient() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  useEffect(() => {
-    const checkoutSuccess = searchParams.get('checkout_success');
-    const sessionId = searchParams.get('session_id');
-
-    if (checkoutSuccess && sessionId) {
-      router.replace(`/dashboard?session_id=${sessionId}`);
-    }
-  }, [searchParams, router]);
-
-
   const handleGoogleSignIn = async () => {
     console.log('[Login Step 1] Initiating Google Sign-In.');
     try {
