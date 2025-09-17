@@ -1,4 +1,3 @@
-
 // hooks/use-checkout.ts
 import { useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -20,19 +19,33 @@ export function useCheckout() {
             return;
         }
 
+        const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+        if (!priceId || priceId === 'your_stripe_price_id_here') {
+            console.error('Stripe Price ID is not configured.');
+            toast({ 
+                variant: 'destructive', 
+                title: 'Configuration Error', 
+                description: 'The payment system is not configured correctly.' 
+            });
+            return;
+        }
+
         setLoading(true);
 
         try {
             const successUrl = `${window.location.origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`;
             const cancelUrl = window.location.href;
 
-            // Call the API route instead of server action
+            console.log('Sending checkout request with:', { priceId, uid: user.uid });
+
+            // Call the API route - NOW INCLUDING priceId
             const response = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    priceId,        // ← ADDED: This was missing!
                     uid: user.uid,
                     successUrl,
                     cancelUrl,
@@ -40,10 +53,13 @@ export function useCheckout() {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create checkout session');
+                const errorData = await response.json();
+                console.error('API Error:', errorData);
+                throw new Error(`Failed to create checkout session: ${errorData.error || 'Unknown error'}`);
             }
 
             const { sessionId } = await response.json();
+            console.log('Checkout session created:', sessionId);
 
             // Listen for the checkout session URL
             const sessionDocRef = doc(db, 'users', user.uid, 'checkout_sessions', sessionId);
@@ -57,6 +73,8 @@ export function useCheckout() {
                 const error = data?.error;
                 const url = data?.url;
 
+                console.log('Checkout session data:', data);
+
                 if (error) {
                     console.error('Stripe Checkout Error:', error.message);
                     toast({ 
@@ -68,6 +86,7 @@ export function useCheckout() {
                     unsubscribed = true;
                     unsubscribe();
                 } else if (url) {
+                    console.log('Redirecting to Stripe:', url);
                     // Redirect to Stripe Checkout
                     window.location.assign(url);
                     unsubscribed = true;
@@ -78,6 +97,7 @@ export function useCheckout() {
             // Cleanup timeout in case something goes wrong
             setTimeout(() => {
                 if (!unsubscribed) {
+                    console.log('Checkout session timed out');
                     unsubscribed = true;
                     unsubscribe();
                     setLoading(false);
@@ -94,7 +114,7 @@ export function useCheckout() {
             toast({ 
                 variant: 'destructive', 
                 title: 'Error', 
-                description: 'Could not initiate the upgrade process.' 
+                description: error.message || 'Could not initiate the upgrade process.' 
             });
             setLoading(false);
         }

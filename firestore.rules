@@ -1,9 +1,12 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own profile and other authenticated users can read it
+    // Users can read/write their own profile
     match /users/{userId} {
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow other authenticated users to read basic profile info for friend features
       allow read: if request.auth != null;
     }
 
@@ -38,44 +41,87 @@ service cloud.firestore {
                        request.resource.data.keys().hasOnly(["status"]);
     }
 
-    // Friends lists
+    // Friends lists - allow reading friend data for display
     match /users/{userId}/friends/{friendId} {
     	allow write: if request.auth.uid == userId || request.auth.uid == friendId;
+  
   		allow read: if request.auth.uid == userId ||
                exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
-  		allow delete: if request.auth.uid == userId;
-		}
 
+  		allow delete: if request.auth.uid == userId;  
+		}
+    
     // Ratings & Watched list
     match /users/{userId}/ratings/{ratingId} {
       // A user can read/write their own ratings.
-      allow write: if request.auth.uid == userId;
       // A user can read a friend's rating only if it is not private.
-      allow read: if request.auth.uid == userId ||
-                     (exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
-                     resource.data.isPrivate != true);
+      allow read, write: if request.auth.uid == userId;
+      allow read: if exists(/databases/$(database)/documents/users/$(userId)/friends/$(request.auth.uid)) &&
+                     resource.data.isPrivate != true;
+    }
+    
+    // Public ratings collection for Friend Activity feed
+    match /ratings/{ratingId} {
+        // A user can create a rating if the userId matches their own.
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        
+        // A user can read a rating if they are friends with the user who created it.
+        allow read: if request.auth != null && 
+                       exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(resource.data.userId));
+        
+        // A user can update or delete their own ratings.
+        allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // AI Recommendations history
     match /users/{userId}/recommendations/{recommendationId} {
        allow read, write: if request.auth.uid == userId;
     }
-
+    
     // User-sent Recommendations history
     match /users/{userId}/sentRecommendations/{recommendationId} {
        allow read, write: if request.auth.uid == userId;
     }
-
+    
    	// Incoming recommendations from friends
     match /users/{userId}/incomingRecommendations/{recommendationId} {
-      // Allow a user to read their own incoming recommendations
-      allow read: if request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
       
       // Allow a user to create a recommendation for another user (userId)
       // IF they are friends with that user.
       allow create: if request.auth != null &&
       								 request.resource.data.fromId == request.auth.uid &&
                        exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+                       
+    }
+    // Stripe rules for customers
+    match /customers/{uid} {
+      allow read: if request.auth.uid == uid;
+
+      match /checkout_sessions/{id} {
+        allow read: if request.auth.uid == uid;
+        // Allow any authenticated user to create a checkout session.
+        // The server-side code will be creating this on behalf of the user.
+        allow write: if request.auth != null;
+      }
+      match /subscriptions/{id} {
+        allow read: if request.auth.uid == uid;
+      }
+      match /payments/{id} {
+        allow read: if request.auth.uid == uid;
+      }
+    }
+		// Stripe rules for products/plans
+    match /products/{id} {
+      allow read: if true;
+
+      match /prices/{id} {
+        allow read: if true;
+      }
+
+      match /tax_rates/{id} {
+        allow read: if true;
+      }
     }
   }
 }
