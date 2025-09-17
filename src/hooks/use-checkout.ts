@@ -1,3 +1,4 @@
+
 // hooks/use-checkout.ts
 import { useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -100,8 +101,8 @@ export function useCheckout() {
                 }
             }, 30000); // 30 second timeout
 
-        } catch (error) {
-            console.error('Failed to create checkout session:', error);
+        } catch (error: any) {
+            console.error('Failed to create checkout session:', error.message);
             toast({ 
                 variant: 'destructive', 
                 title: 'Error', 
