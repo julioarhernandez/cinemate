@@ -2,6 +2,7 @@
 "use client";
 
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import { SidebarProvider, Sidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import { DashboardNav } from '@/components/dashboard-nav';
 import { UserProfile } from '@/components/user-profile';
@@ -12,6 +13,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 function CheckoutListener() {
   const searchParams = useSearchParams();
@@ -103,7 +105,9 @@ function CheckoutListener() {
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
-       <CheckoutListener />
+      <Suspense fallback={null}>
+        <CheckoutListener />
+      </Suspense>
       <div className="flex min-h-screen">
         <Sidebar collapsible="icon" className="bg-sidebar text-sidebar-foreground">
           <DashboardNav />

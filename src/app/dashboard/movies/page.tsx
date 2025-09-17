@@ -587,5 +587,3 @@ export default function MoviesPage() {
         </Suspense>
     )
 }
-
-    
