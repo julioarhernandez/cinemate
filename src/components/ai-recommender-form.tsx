@@ -54,7 +54,6 @@ export function AiRecommenderForm({ onNewRecommendation }: AiRecommenderFormProp
   const [dialogListType, setDialogListType] = useState<'watched' | 'watchlist'>('watched');
   const [result, setResult] = useState<RecommendMovieOutput | null>(null);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
-  const { toast } = useToast();
   const { loading: checkoutLoading, handleCheckout } = useCheckout();
 
 
