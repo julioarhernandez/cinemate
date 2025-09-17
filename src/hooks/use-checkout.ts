@@ -20,17 +20,6 @@ export function useCheckout() {
             return;
         }
 
-        const priceId = process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
-        if (!priceId || priceId === 'your_stripe_price_id_here') {
-            console.error('Stripe Price ID is not configured.');
-            toast({ 
-                variant: 'destructive', 
-                title: 'Configuration Error', 
-                description: 'The payment system is not configured correctly.' 
-            });
-            return;
-        }
-
         setLoading(true);
 
         try {
@@ -44,7 +33,6 @@ export function useCheckout() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    priceId,
                     uid: user.uid,
                     successUrl,
                     cancelUrl,
