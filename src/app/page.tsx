@@ -3,7 +3,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,7 +20,21 @@ import { Logo } from '@/components/logo';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // This is the workaround to enable testing the checkout success flow.
+    // If the success parameters are in the URL, redirect to the dashboard
+    // where the CheckoutListener can process the session.
+    const checkoutSuccess = searchParams.get('checkout_success');
+    const sessionId = searchParams.get('session_id');
+
+    if (checkoutSuccess && sessionId) {
+      router.replace(`/dashboard?session_id=${sessionId}`);
+    }
+  }, [searchParams, router]);
+
 
   const handleGoogleSignIn = async () => {
     console.log('[Login Step 1] Initiating Google Sign-In.');
