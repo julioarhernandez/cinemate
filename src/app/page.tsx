@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { auth, googleProvider, signInWithPopup, db, doc, setDoc, serverTimestamp, getAdditionalUserInfo, onSnapshot, updateDoc } from '@/lib/firebase';
+import { auth, googleProvider, signInWithPopup, db, doc, setDoc, serverTimestamp, getAdditionalUserInfo } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { FirebaseError } from 'firebase/app';
 import { Logo } from '@/components/logo';
@@ -24,79 +24,18 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [user, loading] = useAuthState(auth);
-  const listenerAttached = useRef(false);
-
+  
   useEffect(() => {
+    // This effect simply redirects the user to the dashboard with the session ID
+    // if they land on the login page after a successful checkout.
+    // The actual processing of the session happens in the CheckoutListener in the dashboard layout.
     const checkoutSuccess = searchParams.get('checkout_success');
     const sessionId = searchParams.get('session_id');
 
-    if (checkoutSuccess && sessionId && user && !listenerAttached.current) {
-      console.log(`[Login Page] Detected checkout success with session_id: ${sessionId} for user: ${user.uid}`);
-      listenerAttached.current = true; // Prevents attaching multiple listeners
-      
-      const sessionDocRef = doc(db, 'customers', user.uid, 'checkout_sessions', sessionId);
-      console.log(`[Login Page] Attaching snapshot listener to: ${sessionDocRef.path}`);
-
-      const unsubscribe = onSnapshot(sessionDocRef, async (snap) => {
-        console.log('[Login Page] Snapshot listener fired.');
-        
-        if (!snap.exists()) {
-          console.log('[Login Page] Document does not exist yet. Waiting for Stripe webhook...');
-          return;
-        }
-
-        const data = snap.data();
-        const error = data?.error;
-        const url = data?.url;
-        console.log('[Login Page] Snapshot data:', data);
-
-        if (error) {
-          console.log('[Login Page] Detected error in session document:', error.message);
-          unsubscribe();
-          toast({
-            variant: "destructive",
-            title: "Checkout Error",
-            description: error.message,
-          });
-          router.replace('/dashboard');
-        } else if (url) {
-            console.log('[Login Page] Session confirmed with URL. Preparing to update user tier.');
-            unsubscribe();
-            
-            const userDocRef = doc(db, 'users', user.uid);
-            console.log(`[Login Page] Attempting to update tier to 'pro' for user ID: ${user.uid}`);
-            
-            try {
-                await updateDoc(userDocRef, {
-                    tier: 'pro'
-                });
-                
-                console.log('[Login Page] Successfully updated user tier in Firestore.');
-                toast({
-                    title: "Upgrade Successful!",
-                    description: `Welcome to the Pro plan! UID: ${user.uid}, Email: ${user.email}`,
-                });
-            } catch (updateError) {
-                console.error("[Login Page] Failed to update user tier:", updateError);
-                toast({
-                    variant: "destructive",
-                    title: "Update Failed",
-                    description: "Your payment was successful, but we failed to update your account. Please contact support.",
-                });
-            } finally {
-                console.log('[Login Page] Redirecting to dashboard.');
-                router.replace('/dashboard');
-            }
-        } else {
-             console.log('[Login Page] Document exists, but `url` is not yet present. Waiting for next snapshot.');
-        }
-      }, (err) => {
-          console.error("[Login Page] Snapshot listener error:", err);
-          unsubscribe();
-          router.replace('/dashboard');
-      });
+    if (checkoutSuccess && sessionId) {
+      router.replace(`/dashboard?session_id=${sessionId}`);
     }
-  }, [searchParams, user, loading, router, toast]);
+  }, [searchParams, router]);
 
 
   const handleGoogleSignIn = async () => {
