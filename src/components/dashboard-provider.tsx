@@ -43,9 +43,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const unsubscribe = onSnapshot(sessionDocRef, async (snap) => {
         console.log('[DashboardProvider] Snapshot listener fired.');
         
+        // This is the key change: The logic now runs on the initial snapshot and any subsequent updates.
         if (!snap.exists()) {
           console.log('[DashboardProvider] Document does not exist yet. Waiting for Stripe webhook...');
-          return;
+          return; // Wait for the document to be created by the webhook.
         }
 
         const data = snap.data();
