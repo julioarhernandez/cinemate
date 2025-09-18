@@ -895,15 +895,15 @@ export function CollectionsPageClient() {
                 <TabsTrigger value="my-recommendations">My Recs<CountBadge count={myRecCount} /></TabsTrigger>
                 <TabsTrigger value="incoming-recommendations">Incoming Recs<CountBadge count={incomingRecCount} /></TabsTrigger>
             </TabsList>
-            <div className="relative w-full sm:w-auto sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                placeholder="Search current tab..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
+        </div>
+        <div className="relative w-full sm:max-w-xs mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+            placeholder="Search current tab..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            />
         </div>
         <div className="mt-6">
             {renderTabContent()}
@@ -913,3 +913,5 @@ export function CollectionsPageClient() {
     </TooltipProvider>
   );
 }
+
+    
