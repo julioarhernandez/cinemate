@@ -16,7 +16,18 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const listenerAttached = useRef(false);
 
+  console.log('[DashboardProvider] Component rendered.', { 
+    loading, 
+    user: user ? { uid: user.uid, email: user.email } : null 
+  });
+
   useEffect(() => {
+    console.log('[DashboardProvider] useEffect triggered.', {
+      loading,
+      user: user ? { uid: user.uid, email: user.email } : null,
+      listenerAttached: listenerAttached.current
+    });
+
     // Wait until the auth state is fully resolved.
     if (loading) {
       console.log('[DashboardProvider] Auth state is loading. Waiting...');
@@ -109,6 +120,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
 
   if (loading) {
+    console.log('[DashboardProvider] Rendering loading spinner.');
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -117,9 +129,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
+    console.log('[DashboardProvider] Rendering null while redirecting.');
     // While redirecting, render nothing.
     return null;
   }
 
+  console.log('[DashboardProvider] Rendering children.');
   return <>{children}</>;
 }
