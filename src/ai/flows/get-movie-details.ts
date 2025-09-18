@@ -110,6 +110,8 @@ export async function getMovieDetails(
 
   try {
     const apiKey = process.env.TMDB_API_KEY;
+    const fetchOptions = { next: { revalidate: 3600 } }; // Cache for 1 hour
+
     // Fetch detailed information, videos, watch providers, and credits in parallel
     const detailsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}?api_key=${apiKey}`;
     const videosUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/videos?api_key=${apiKey}`;
@@ -117,10 +119,10 @@ export async function getMovieDetails(
     const creditsUrl = `https://api.themoviedb.org/3/${mediaType}/${id}/credits?api_key=${apiKey}`;
     
     const [detailsResponse, videosResponse, providersResponse, creditsResponse] = await Promise.all([
-      fetch(detailsUrl),
-      fetch(videosUrl),
-      fetch(providersUrl),
-      fetch(creditsUrl),
+      fetch(detailsUrl, fetchOptions),
+      fetch(videosUrl, fetchOptions),
+      fetch(providersUrl, fetchOptions),
+      fetch(creditsUrl, fetchOptions),
     ]);
 
     // If the movie is not found on TMDB, fall back.
