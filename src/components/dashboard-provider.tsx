@@ -17,16 +17,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const listenerAttached = useRef(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/");
+    // Wait until the auth state is fully resolved.
+    if (loading) {
+      return;
     }
-  }, [user, loading, router]);
-  
-  useEffect(() => {
+
+    // If auth is resolved and there's no user, redirect to login.
+    if (!user) {
+      router.push("/");
+      return;
+    }
+
+    // If we have a user, proceed with the checkout listener logic.
     const sessionId = searchParams.get('session_id');
 
-    // Only run if we have a user, a session ID, and the listener isn't already attached.
-    if (user && sessionId && !listenerAttached.current) {
+    if (sessionId && !listenerAttached.current) {
       console.log(`[DashboardProvider] Detected session_id: ${sessionId} for user: ${user.uid}`);
       listenerAttached.current = true; // Prevents attaching multiple listeners for the same session
 
@@ -98,8 +103,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         listenerAttached.current = false; // Reset ref on cleanup
       };
     }
-  // We include `user` in the dependency array so this effect re-runs when the user object becomes available.
-  }, [searchParams, user, router, toast, loading]);
+  }, [user, loading, router, searchParams, toast]);
 
 
   if (loading) {
