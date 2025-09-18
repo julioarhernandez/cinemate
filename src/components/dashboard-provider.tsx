@@ -19,11 +19,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Wait until the auth state is fully resolved.
     if (loading) {
+      console.log('[DashboardProvider] Auth state is loading. Waiting...');
       return;
     }
 
     // If auth is resolved and there's no user, redirect to login.
     if (!user) {
+      console.log('[DashboardProvider] No user found after loading. Redirecting to login.');
       router.push("/");
       return;
     }
