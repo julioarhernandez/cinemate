@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getDocs, query, where, doc, setDoc, serverTimestamp, orderBy, Timestamp, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc, serverTimestamp, orderBy, Timestamp, deleteDoc, getCountFromServer } from 'firebase/firestore';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -101,6 +101,14 @@ export function CollectionsPageClient() {
   const [userRatings, setUserRatings] = useState<UserRatings>({});
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'watchlist');
   const [fetchedTabs, setFetchedTabs] = useState<string[]>([]);
+  
+  // State for counts
+  const [watchlistCount, setWatchlistCount] = useState<number | null>(null);
+  const [collectionCount, setCollectionCount] = useState<number | null>(null);
+  const [aiRecCount, setAiRecCount] = useState<number | null>(null);
+  const [myRecCount, setMyRecCount] = useState<number | null>(null);
+  const [incomingRecCount, setIncomingRecCount] = useState<number | null>(null);
+
 
   // Filter states
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -114,6 +122,47 @@ export function CollectionsPageClient() {
   const [pageSize, setPageSize] = useState(10);
   
   const { toast } = useToast();
+
+    // Effect to fetch counts on initial load
+  useEffect(() => {
+    if (user) {
+      const fetchCounts = async () => {
+        try {
+          const ratingsCol = collection(db, 'users', user.uid, 'ratings');
+          const recommendationsCol = collection(db, 'users', user.uid, 'recommendations');
+          const sentRecsCol = collection(db, 'users', user.uid, 'sentRecommendations');
+          const incomingRecsCol = collection(db, 'users', user.uid, 'incomingRecommendations');
+
+          const watchlistQuery = query(ratingsCol, where('watchlist', '==', true));
+          const collectionQuery = query(ratingsCol, where('watched', '==', true));
+
+          const [
+            watchlistSnapshot,
+            collectionSnapshot,
+            aiRecSnapshot,
+            myRecSnapshot,
+            incomingRecSnapshot
+          ] = await Promise.all([
+            getCountFromServer(watchlistQuery),
+            getCountFromServer(collectionQuery),
+            getCountFromServer(recommendationsCol),
+            getCountFromServer(sentRecsCol),
+            getCountFromServer(incomingRecsCol),
+          ]);
+          
+          setWatchlistCount(watchlistSnapshot.data().count);
+          setCollectionCount(collectionSnapshot.data().count);
+          setAiRecCount(aiRecSnapshot.data().count);
+          setMyRecCount(myRecSnapshot.data().count);
+          setIncomingRecCount(incomingRecSnapshot.data().count);
+
+        } catch (error) {
+          console.error("Error fetching counts: ", error);
+        }
+      };
+      fetchCounts();
+    }
+  }, [user]);
 
   const fetchTabContent = useCallback(async (tab: string) => {
     if (!user || fetchedTabs.includes(tab)) return;
@@ -273,6 +322,7 @@ export function CollectionsPageClient() {
         const ratingDocRef = doc(db, 'users', user.uid, 'ratings', movieId.toString());
         await setDoc(ratingDocRef, { watchlist: false, updatedAt: serverTimestamp() }, { merge: true });
         setWatchlistMovies(prevMovies => prevMovies.filter(m => m.id !== movieId));
+        setWatchlistCount(c => (c !== null ? c - 1 : null));
         toast({ title: 'Removed from watchlist.' });
     } catch (error) {
         console.error('Failed to remove from watchlist:', error);
@@ -286,6 +336,7 @@ export function CollectionsPageClient() {
         const recDocRef = doc(db, 'users', user.uid, 'incomingRecommendations', recommendationId);
         await deleteDoc(recDocRef);
         setIncomingRecommendations(prev => prev.filter(r => r.id !== recommendationId));
+        setIncomingRecCount(c => (c !== null ? c - 1 : null));
         toast({ title: 'Recommendation dismissed.' });
     } catch (error) {
         console.error('Failed to dismiss recommendation:', error);
@@ -312,6 +363,10 @@ export function CollectionsPageClient() {
       setIncomingRecommendations(prev => prev.filter(r => r.id !== recommendation.id));
       setWatchlistMovies(prev => [recommendation.movie, ...prev]);
       
+      // Update counts
+      setIncomingRecCount(c => (c !== null ? c - 1 : null));
+      setWatchlistCount(c => (c !== null ? c + 1 : null));
+      
       toast({ 
         title: 'Saved to Watchlist!',
         description: `"${recommendation.movie.title}" has been added to your watchlist.`,
@@ -329,6 +384,7 @@ export function CollectionsPageClient() {
       const recDocRef = doc(db, 'users', user.uid, 'recommendations', recommendationId);
       await deleteDoc(recDocRef);
       setAiRecommendationHistory(prev => prev.filter(r => r.id !== recommendationId));
+      setAiRecCount(c => (c !== null ? c - 1 : null));
       toast({ title: 'Recommendation deleted.' });
     } catch (error) {
       console.error('Failed to delete AI recommendation:', error);
@@ -342,6 +398,7 @@ export function CollectionsPageClient() {
       const recDocRef = doc(db, 'users', user.uid, 'sentRecommendations', recommendationId);
       await deleteDoc(recDocRef);
       setUserRecommendations(prev => prev.filter(r => r.id !== recommendationId));
+      setMyRecCount(c => (c !== null ? c - 1 : null));
       toast({ title: 'Removed recommendation from your history.' });
     } catch (error) {
       console.error('Failed to delete sent recommendation:', error);
@@ -379,6 +436,12 @@ export function CollectionsPageClient() {
             return null;
     }
   };
+  
+  const CountBadge = ({ count }: { count: number | null }) => {
+    if (count === null) return <Loader2 className="h-4 w-4 animate-spin ml-2" />;
+    if (count === 0) return null;
+    return <Badge variant="secondary" className="ml-2">{count}</Badge>;
+  }
 
   const renderCollection = () => (
     <div className="space-y-4">
@@ -459,7 +522,7 @@ export function CollectionsPageClient() {
             </Select>
         </div>
         
-        {watchedMovies.length === 0 && (
+        {collectionCount === 0 && !loading && (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center mt-4">
                 <h3 className="text-xl font-bold tracking-tight">Your collection is empty</h3>
                 <p className="text-sm text-muted-foreground mt-2">Browse for media and mark it as watched to build your collection.</p>
@@ -467,7 +530,7 @@ export function CollectionsPageClient() {
             </div>
         )}
         
-        {watchedMovies.length > 0 && paginatedMovies.length === 0 && (
+        {collectionCount > 0 && paginatedMovies.length === 0 && (
             <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center mt-4">
                 <h3 className="text-xl font-bold tracking-tight">No Results Found</h3>
                 <p className="text-sm text-muted-foreground mt-2">Your filters did not match any items in your collection.</p>
@@ -531,13 +594,13 @@ export function CollectionsPageClient() {
 
   const renderWatchlist = () => (
     <>
-      {filteredWatchlistMovies.length === 0 && searchTerm && (
+      {watchlistCount > 0 && filteredWatchlistMovies.length === 0 && searchTerm && (
         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
             <h3 className="text-xl font-bold tracking-tight">No items found</h3>
             <p className="text-sm text-muted-foreground mt-2">Your search for "{searchTerm}" did not match any items in your watchlist.</p>
         </div>
       )}
-      {watchlistMovies.length === 0 && !searchTerm && (
+      {watchlistCount === 0 && !loading && (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
               <h3 className="text-xl font-bold tracking-tight">Your watchlist is empty</h3>
               <p className="text-sm text-muted-foreground mt-2">Browse for movies and TV shows and add them to your watchlist.</p>
@@ -585,7 +648,7 @@ export function CollectionsPageClient() {
 
   const renderAiRecommendations = () => (
     <>
-      {aiRecommendationHistory.length === 0 && (
+      {aiRecCount === 0 && !loading && (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
               <h3 className="text-xl font-bold tracking-tight">No history yet</h3>
               <p className="text-sm text-muted-foreground mt-2">Your past AI recommendations will appear here.</p>
@@ -650,7 +713,7 @@ export function CollectionsPageClient() {
 
   const renderMyRecommendations = () => (
     <>
-      {userRecommendations.length === 0 && (
+      {myRecCount === 0 && !loading && (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
               <h3 className="text-xl font-bold tracking-tight">You haven't recommended anything</h3>
               <p className="text-sm text-muted-foreground mt-2">Movies you recommend to friends will appear here.</p>
@@ -724,7 +787,7 @@ export function CollectionsPageClient() {
 
   const renderIncomingRecommendations = () => (
     <>
-      {incomingRecommendations.length === 0 && (
+      {incomingRecCount === 0 && !loading && (
           <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center">
               <Gift className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-xl font-bold tracking-tight">No incoming recommendations</h3>
@@ -825,12 +888,12 @@ export function CollectionsPageClient() {
 
      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:inline-flex">
-                <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
-                <TabsTrigger value="collection">My Collection</TabsTrigger>
-                <TabsTrigger value="ai-recommendations">AI Suggestions</TabsTrigger>
-                <TabsTrigger value="my-recommendations">My Recs</TabsTrigger>
-                <TabsTrigger value="incoming-recommendations">Incoming Recs</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+                <TabsTrigger value="watchlist">Watchlist<CountBadge count={watchlistCount} /></TabsTrigger>
+                <TabsTrigger value="collection">My Collection<CountBadge count={collectionCount} /></TabsTrigger>
+                <TabsTrigger value="ai-recommendations">AI Suggestions<CountBadge count={aiRecCount} /></TabsTrigger>
+                <TabsTrigger value="my-recommendations">My Recs<CountBadge count={myRecCount} /></TabsTrigger>
+                <TabsTrigger value="incoming-recommendations">Incoming Recs<CountBadge count={incomingRecCount} /></TabsTrigger>
             </TabsList>
             <div className="relative w-full sm:w-auto sm:max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
