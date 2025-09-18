@@ -857,3 +857,5 @@ export function CollectionsPageClient() {
     </TooltipProvider>
   );
 }
+
+    
