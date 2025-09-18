@@ -22,7 +22,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </header>
           <main className="p-4 sm:p-6 lg:p-8">
             <DashboardProvider>
-                {children}
+              <Suspense fallback={null}>
+                  {children}
+              </Suspense>
             </DashboardProvider>
           </main>
         </div>
