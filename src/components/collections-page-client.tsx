@@ -159,7 +159,7 @@ export function CollectionsPageClient() {
         // Fetch AI recommendation history
         const aiHistoryCollection = collection(db, 'users', user.uid, 'recommendations');
         const aiHistoryQuery = query(aiHistoryCollection, orderBy('createdAt', 'desc'));
-        const aiHistorySnapshot = await getDocs(aiHistoryCollection);
+        const aiHistorySnapshot = await getDocs(aiHistoryQuery);
         const aiHistoryData = aiHistorySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
